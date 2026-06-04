@@ -953,3 +953,38 @@ textarea {
     align-items: flex-start;
   }
 }
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.file-selected-box {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.file-selected-box strong {
+  display: block;
+  color: white;
+  margin-bottom: 6px;
+}
+
+.file-selected-box span {
+  color: #b8b8b8;
+  word-break: break-all;
+}
+
+@media (max-width: 700px) {
+  .file-selected-box {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

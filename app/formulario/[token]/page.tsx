@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+type ArquivoFormulario = {
+  nome: string;
+  tipo: string;
+  base64: string;
+};
+
 type BriefingForm = {
   empresa: string;
   segmento: string;
@@ -17,9 +23,7 @@ type BriefingForm = {
   referencias: string;
   possuiLogo: string;
   materiais: string;
-  arquivoNome: string;
-  arquivoTipo: string;
-  arquivoBase64: string;
+  arquivos: ArquivoFormulario[];
 };
 
 export default function FormularioClientePage() {
@@ -41,9 +45,7 @@ export default function FormularioClientePage() {
     referencias: "",
     possuiLogo: "",
     materiais: "",
-    arquivoNome: "",
-    arquivoTipo: "",
-    arquivoBase64: "",
+    arquivos: [],
   });
 
   const next = () => setStep((prev) => Math.min(prev + 1, 5));
@@ -53,29 +55,70 @@ export default function FormularioClientePage() {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   }
 
-  function salvarArquivo(arquivo: File | null) {
-    if (!arquivo) return;
-
-    const leitor = new FileReader();
-
-    leitor.onload = () => {
-      setForm((prev) => ({
-        ...prev,
-        arquivoNome: arquivo.name,
-        arquivoTipo: arquivo.type,
-        arquivoBase64: String(leitor.result),
-      }));
-    };
-
-    leitor.readAsDataURL(arquivo);
+  function limparNomeEmpresa(nome: string) {
+    return (
+      nome
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || "cliente"
+    );
   }
 
-  function removerArquivo() {
+  function salvarArquivos(listaArquivos: FileList | null) {
+    if (!listaArquivos) return;
+
+    const arquivosArray = Array.from(listaArquivos);
+
+    if (form.arquivos.length + arquivosArray.length > 20) {
+      alert("Você pode enviar no máximo 20 arquivos.");
+      return;
+    }
+
+    arquivosArray.forEach((arquivo) => {
+      const tiposPermitidos = [
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+        "video/mp4",
+      ];
+
+      if (!tiposPermitidos.includes(arquivo.type)) {
+        alert(`Arquivo não permitido: ${arquivo.name}`);
+        return;
+      }
+
+      if (arquivo.size > 50 * 1024 * 1024) {
+        alert(`${arquivo.name} ultrapassa o limite de 50MB.`);
+        return;
+      }
+
+      const leitor = new FileReader();
+
+      leitor.onload = () => {
+        setForm((prev) => ({
+          ...prev,
+          arquivos: [
+            ...prev.arquivos,
+            {
+              nome: arquivo.name,
+              tipo: arquivo.type,
+              base64: String(leitor.result),
+            },
+          ],
+        }));
+      };
+
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
+  function removerArquivo(index: number) {
     setForm((prev) => ({
       ...prev,
-      arquivoNome: "",
-      arquivoTipo: "",
-      arquivoBase64: "",
+      arquivos: prev.arquivos.filter((_, i) => i !== index),
     }));
   }
 
@@ -83,27 +126,20 @@ export default function FormularioClientePage() {
     try {
       setEnviando(true);
 
-      let arquivoUrl = "";
+      const empresaLimpa = limparNomeEmpresa(form.empresa);
 
-      if (form.arquivoBase64) {
-        const response = await fetch(form.arquivoBase64);
+      const arquivosEnviados = [];
+
+      for (const arquivo of form.arquivos) {
+        const response = await fetch(arquivo.base64);
         const blob = await response.blob();
 
-        const empresaLimpa =
-          form.empresa
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-|-$/g, "") || "cliente";
-
-        const nomeArquivo = `${empresaLimpa}/${Date.now()}-${form.arquivoNome}`;
+        const caminhoArquivo = `${empresaLimpa}/${Date.now()}-${arquivo.nome}`;
 
         const { error: uploadError } = await supabase.storage
           .from("briefings")
-          .upload(nomeArquivo, blob, {
-            contentType: form.arquivoTipo,
+          .upload(caminhoArquivo, blob, {
+            contentType: arquivo.tipo,
           });
 
         if (uploadError) {
@@ -114,10 +150,17 @@ export default function FormularioClientePage() {
 
         const { data } = supabase.storage
           .from("briefings")
-          .getPublicUrl(nomeArquivo);
+          .getPublicUrl(caminhoArquivo);
 
-        arquivoUrl = data.publicUrl;
+        arquivosEnviados.push({
+          nome: arquivo.nome,
+          tipo: arquivo.tipo,
+          url: data.publicUrl,
+          caminho: caminhoArquivo,
+        });
       }
+
+      const primeiroArquivo = arquivosEnviados[0];
 
       const { error } = await supabase.from("briefings").insert([
         {
@@ -131,9 +174,10 @@ export default function FormularioClientePage() {
           estilo: form.estilo,
           status: "Novo",
           criado_em: new Date().toISOString(),
-          arquivo_url: arquivoUrl,
-          arquivo_nome: form.arquivoNome,
-          arquivo_tipo: form.arquivoTipo,
+          arquivo_url: primeiroArquivo?.url || "",
+          arquivo_nome: primeiroArquivo?.nome || "",
+          arquivo_tipo: primeiroArquivo?.tipo || "",
+          arquivos: arquivosEnviados,
         },
       ]);
 
@@ -182,7 +226,6 @@ export default function FormularioClientePage() {
 
         <div className="briefing-progress">
           <span>Passo {step} de 5</span>
-
           <div>
             <div style={{ width: `${step * 20}%` }} />
           </div>
@@ -191,7 +234,6 @@ export default function FormularioClientePage() {
         {step === 1 && (
           <div className="briefing-step">
             <h1>Dados da empresa</h1>
-
             <p>Vamos começar com as informações principais do seu negócio.</p>
 
             <div className="briefing-grid">
@@ -419,28 +461,38 @@ export default function FormularioClientePage() {
               ))}
             </div>
 
-            <label className="field-title">Enviar arquivo</label>
+            <label className="field-title">Enviar arquivos</label>
 
             <input
               type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => salvarArquivo(e.target.files?.[0] || null)}
+              multiple
+              accept=".jpg,.jpeg,.png,.pdf,.mp4"
+              onChange={(e) => salvarArquivos(e.target.files)}
             />
 
-            {form.arquivoNome && (
-              <div className="file-selected-box">
-                <div>
-                  <strong>📎 Arquivo selecionado</strong>
-                  <span>{form.arquivoNome}</span>
-                </div>
+            <div className="tip-box">
+              Você pode enviar até 20 arquivos: imagens, PDFs ou vídeos MP4.
+              Tamanho máximo: 50MB por arquivo.
+            </div>
 
-                <button
-                  type="button"
-                  onClick={removerArquivo}
-                  className="btn-danger"
-                >
-                  Remover arquivo
-                </button>
+            {form.arquivos.length > 0 && (
+              <div className="file-list">
+                {form.arquivos.map((arquivo, index) => (
+                  <div key={index} className="file-selected-box">
+                    <div>
+                      <strong>📎 {arquivo.nome}</strong>
+                      <span>{arquivo.tipo}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removerArquivo(index)}
+                      className="btn-danger"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -454,11 +506,12 @@ export default function FormularioClientePage() {
                 <li>Fotos dos produtos</li>
                 <li>Textos institucionais</li>
                 <li>Catálogo ou apresentação</li>
+                <li>Vídeo institucional</li>
               </ul>
             </div>
 
             <textarea
-              placeholder="Ex: Tenho logo, algumas fotos, textos e materiais da empresa."
+              placeholder="Ex: Tenho logo, algumas fotos, vídeos e materiais da empresa."
               value={form.materiais}
               onChange={(e) => atualizarCampo("materiais", e.target.value)}
             />
