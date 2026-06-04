@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Webmaster Digital | Sistema de Clientes",
-  description: "Sistema para clientes, projetos, contratos e briefings da Webmaster Digital",
+  title: "Webmaster Digital",
+  description: "Sistema de Gestão Webmaster Digital",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="pt-BR">
       <body>{children}</body>
