@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 type Contrato = {
   id: number;
@@ -27,6 +29,8 @@ type Contrato = {
 export default function ContratoPage() {
   const params = useParams();
   const id = params.id as string;
+
+  const contratoRef = useRef<HTMLDivElement>(null);
 
   const [contrato, setContrato] = useState<Contrato | null>(null);
   const [assinatura, setAssinatura] = useState("");
@@ -111,6 +115,49 @@ export default function ContratoPage() {
     setAssinado(true);
   }
 
+  async function baixarPDF() {
+    if (!contratoRef.current) return;
+
+    const canvas = await html2canvas(contratoRef.current, {
+      scale: 2,
+      useCORS: true,
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    const nomeEmpresa =
+      contrato?.empresa
+        ?.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || "cliente";
+
+    pdf.save(`contrato-${nomeEmpresa}.pdf`);
+  }
+
   if (carregando) {
     return (
       <main className="briefing-page">
@@ -134,7 +181,7 @@ export default function ContratoPage() {
   if (assinado) {
     return (
       <main className="briefing-page">
-        <section className="briefing-card success-card">
+        <section className="briefing-card success-card" ref={contratoRef}>
           <div className="briefing-brand">
             <img src="/logo.png" alt="Webmaster Digital" />
           </div>
@@ -148,6 +195,46 @@ export default function ContratoPage() {
             Webmaster Digital recebeu sua assinatura e dará continuidade ao
             projeto.
           </p>
+
+          <div className="report-section">
+            <h3>Resumo do contrato</h3>
+
+            <div className="report-grid">
+              <div>
+                <small>Empresa</small>
+                <strong>{contrato.empresa}</strong>
+              </div>
+
+              <div>
+                <small>Responsável</small>
+                <strong>{assinatura}</strong>
+              </div>
+
+              <div>
+                <small>E-mail</small>
+                <strong>{email}</strong>
+              </div>
+
+              <div>
+                <small>Telefone</small>
+                <strong>{telefone}</strong>
+              </div>
+
+              <div>
+                <small>CPF/CNPJ</small>
+                <strong>{cpfCnpj || "Não informado"}</strong>
+              </div>
+
+              <div>
+                <small>Status</small>
+                <strong>Assinado</strong>
+              </div>
+            </div>
+          </div>
+
+          <button className="btn-next" onClick={baixarPDF}>
+            Baixar PDF do contrato
+          </button>
         </section>
       </main>
     );
@@ -155,7 +242,7 @@ export default function ContratoPage() {
 
   return (
     <main className="briefing-page">
-      <section className="briefing-card">
+      <section className="briefing-card" ref={contratoRef}>
         <div className="briefing-brand">
           <img src="/logo.png" alt="Webmaster Digital" />
         </div>
