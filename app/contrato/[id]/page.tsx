@@ -30,15 +30,16 @@ export default function ContratoPage() {
 
   const [contrato, setContrato] = useState<Contrato | null>(null);
   const [assinatura, setAssinatura] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [cpfCnpj, setCpfCnpj] = useState("");
   const [aceitou, setAceitou] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [assinado, setAssinado] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      buscarContrato();
-    }
+    if (id) buscarContrato();
   }, [id]);
 
   async function buscarContrato() {
@@ -55,13 +56,27 @@ export default function ContratoPage() {
     }
 
     setContrato(data);
+    setAssinatura(data.assinatura || "");
+    setEmail(data.email || "");
+    setTelefone(data.telefone || "");
+    setCpfCnpj(data.cpf_cnpj || "");
     setAssinado(data.status === "Assinado");
     setCarregando(false);
   }
 
   async function assinarContrato() {
     if (!assinatura.trim()) {
-      alert("Digite seu nome completo para assinar.");
+      alert("Digite seu nome.");
+      return;
+    }
+
+    if (!email.trim()) {
+      alert("Digite seu e-mail.");
+      return;
+    }
+
+    if (!telefone.trim()) {
+      alert("Digite seu telefone.");
       return;
     }
 
@@ -76,6 +91,9 @@ export default function ContratoPage() {
       .from("contratos")
       .update({
         assinatura,
+        email,
+        telefone,
+        cpf_cnpj: cpfCnpj,
         aceitou_termos: true,
         status: "Assinado",
         data_assinatura: new Date().toISOString(),
@@ -126,8 +144,9 @@ export default function ContratoPage() {
           <h1>Contrato assinado com sucesso!</h1>
 
           <p>
-            Obrigado, {contrato.responsavel || contrato.empresa}. A Webmaster
-            Digital recebeu sua assinatura e dará continuidade ao projeto.
+            Obrigado, {assinatura || contrato.responsavel || contrato.empresa}. A
+            Webmaster Digital recebeu sua assinatura e dará continuidade ao
+            projeto.
           </p>
         </section>
       </main>
@@ -156,19 +175,17 @@ export default function ContratoPage() {
 
               <div>
                 <small>Responsável</small>
-                <strong>{contrato.responsavel || "Não informado"}</strong>
+                <strong>{assinatura || contrato.responsavel || "A preencher"}</strong>
               </div>
 
               <div>
                 <small>CPF/CNPJ</small>
-                <strong>{contrato.cpf_cnpj || "Não informado"}</strong>
+                <strong>{cpfCnpj || "Opcional"}</strong>
               </div>
 
               <div>
                 <small>Contato</small>
-                <strong>
-                  {contrato.telefone || contrato.email || "Não informado"}
-                </strong>
+                <strong>{telefone || email || "A preencher"}</strong>
               </div>
             </div>
           </div>
@@ -281,12 +298,33 @@ export default function ContratoPage() {
           <div className="report-section">
             <h3>Assinatura digital</h3>
 
-            <label className="field-title">Digite seu nome completo</label>
-
+            <label className="field-title">Nome do responsável *</label>
             <input
-              placeholder="Nome completo do responsável"
+              placeholder="Digite seu nome"
               value={assinatura}
               onChange={(e) => setAssinatura(e.target.value)}
+            />
+
+            <label className="field-title">E-mail *</label>
+            <input
+              type="email"
+              placeholder="Digite seu e-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <label className="field-title">Telefone *</label>
+            <input
+              placeholder="Digite seu telefone"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+            />
+
+            <label className="field-title">CPF/CNPJ (opcional)</label>
+            <input
+              placeholder="Digite seu CPF ou CNPJ"
+              value={cpfCnpj}
+              onChange={(e) => setCpfCnpj(e.target.value)}
             />
 
             <label className="check-line">
