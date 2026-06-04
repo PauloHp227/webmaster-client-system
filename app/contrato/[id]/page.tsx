@@ -1,0 +1,295 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Contrato = {
+  id: number;
+  empresa: string;
+  responsavel: string;
+  cpf_cnpj: string;
+  email: string;
+  telefone: string;
+  servico: string;
+  valor_total: string;
+  forma_pagamento: string;
+  entrada: string;
+  restante: string;
+  prazo: string;
+  observacoes: string;
+  assinatura: string;
+  aceitou_termos: boolean;
+  status: string;
+  data_assinatura: string;
+};
+
+export default function ContratoPage({ params }: { params: { id: string } }) {
+  const [contrato, setContrato] = useState<Contrato | null>(null);
+  const [assinatura, setAssinatura] = useState("");
+  const [aceitou, setAceitou] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [assinado, setAssinado] = useState(false);
+
+  useEffect(() => {
+    buscarContrato();
+  }, []);
+
+  async function buscarContrato() {
+    const { data, error } = await supabase
+      .from("contratos")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+
+    if (error) {
+      console.error(error);
+      alert("Contrato não encontrado.");
+      setCarregando(false);
+      return;
+    }
+
+    setContrato(data);
+    setAssinado(data.status === "Assinado");
+    setCarregando(false);
+  }
+
+  async function assinarContrato() {
+    if (!assinatura.trim()) {
+      alert("Digite seu nome completo para assinar.");
+      return;
+    }
+
+    if (!aceitou) {
+      alert("Você precisa aceitar os termos do contrato.");
+      return;
+    }
+
+    setSalvando(true);
+
+    const { error } = await supabase
+      .from("contratos")
+      .update({
+        assinatura,
+        aceitou_termos: true,
+        status: "Assinado",
+        data_assinatura: new Date().toISOString(),
+      })
+      .eq("id", params.id);
+
+    setSalvando(false);
+
+    if (error) {
+      console.error(error);
+      alert("Erro ao assinar contrato.");
+      return;
+    }
+
+    setAssinado(true);
+  }
+
+  if (carregando) {
+    return (
+      <main className="briefing-page">
+        <section className="briefing-card">
+          <h1>Carregando contrato...</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (!contrato) {
+    return (
+      <main className="briefing-page">
+        <section className="briefing-card">
+          <h1>Contrato não encontrado</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (assinado) {
+    return (
+      <main className="briefing-page">
+        <section className="briefing-card success-card">
+          <div className="briefing-brand">
+            <img src="/logo.png" alt="Webmaster Digital" />
+          </div>
+
+          <div className="success-icon">✅</div>
+          <h1>Contrato assinado com sucesso!</h1>
+          <p>
+            Obrigado, {contrato.responsavel || contrato.empresa}. A Webmaster
+            Digital recebeu sua assinatura e dará continuidade ao projeto.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="briefing-page">
+      <section className="briefing-card">
+        <div className="briefing-brand">
+          <img src="/logo.png" alt="Webmaster Digital" />
+        </div>
+
+        <div className="briefing-step">
+          <h1>Contrato de Prestação de Serviços</h1>
+          <p>Webmaster Digital — Criação de Sites & Design</p>
+
+          <div className="report-section">
+            <h3>Dados do contrato</h3>
+
+            <div className="report-grid">
+              <div>
+                <small>Empresa</small>
+                <strong>{contrato.empresa || "Não informado"}</strong>
+              </div>
+
+              <div>
+                <small>Responsável</small>
+                <strong>{contrato.responsavel || "Não informado"}</strong>
+              </div>
+
+              <div>
+                <small>CPF/CNPJ</small>
+                <strong>{contrato.cpf_cnpj || "Não informado"}</strong>
+              </div>
+
+              <div>
+                <small>Contato</small>
+                <strong>{contrato.telefone || contrato.email || "Não informado"}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="report-section">
+            <h3>Serviço contratado</h3>
+
+            <p>
+              A Webmaster Digital prestará o serviço de{" "}
+              <strong>{contrato.servico}</strong> para a empresa{" "}
+              <strong>{contrato.empresa}</strong>, conforme informações
+              fornecidas pelo contratante e escopo acordado entre as partes.
+            </p>
+
+            <div className="report-grid">
+              <div>
+                <small>Valor total</small>
+                <strong>{contrato.valor_total}</strong>
+              </div>
+
+              <div>
+                <small>Entrada</small>
+                <strong>{contrato.entrada}</strong>
+              </div>
+
+              <div>
+                <small>Restante</small>
+                <strong>{contrato.restante}</strong>
+              </div>
+
+              <div>
+                <small>Prazo</small>
+                <strong>{contrato.prazo}</strong>
+              </div>
+            </div>
+
+            <p>
+              Forma de pagamento: <strong>{contrato.forma_pagamento}</strong>
+            </p>
+          </div>
+
+          <div className="report-section">
+            <h3>Domínio, hospedagem e acessos</h3>
+            <p>
+              A Webmaster Digital realizará a configuração inicial do domínio,
+              hospedagem e serviços necessários para o funcionamento do site,
+              conforme acordado. Sempre que possível, os serviços serão
+              cadastrados utilizando os dados do cliente.
+            </p>
+            <p>
+              Após o período inicial incluído no projeto, custos de renovação de
+              domínio, hospedagem, e-mails profissionais ou plataformas de
+              terceiros serão de responsabilidade do contratante.
+            </p>
+            <p>
+              A Webmaster Digital poderá manter acesso administrativo durante o
+              desenvolvimento e suporte, exclusivamente para manutenção,
+              configuração e acompanhamento técnico.
+            </p>
+          </div>
+
+          <div className="report-section">
+            <h3>Garantia e manutenção</h3>
+            <p>
+              O projeto contará com 30 dias de garantia após a entrega para
+              correções relacionadas ao desenvolvimento. Alterações de conteúdo,
+              novas páginas, novas funcionalidades ou mudanças fora do escopo
+              inicial poderão ser cobradas separadamente.
+            </p>
+            <p>
+              A manutenção mensal é opcional e poderá ser contratada
+              posteriormente mediante valor acordado entre as partes.
+            </p>
+          </div>
+
+          <div className="report-section">
+            <h3>Cancelamento e reembolso</h3>
+            <p>
+              O contratante poderá solicitar cancelamento em até 2 dias corridos
+              após a confirmação do pagamento da entrada, desde que o
+              desenvolvimento ainda não tenha sido iniciado.
+            </p>
+            <p>
+              Após esse período, ou após o início do desenvolvimento,
+              planejamento, briefing, configuração de domínio, hospedagem ou
+              qualquer atividade relacionada ao projeto, os valores pagos como
+              entrada não serão reembolsáveis.
+            </p>
+            <p>
+              A publicação definitiva do projeto e a entrega final ocorrerão
+              após a confirmação do pagamento integral do valor contratado.
+            </p>
+          </div>
+
+          {contrato.observacoes && (
+            <div className="report-section">
+              <h3>Observações</h3>
+              <p>{contrato.observacoes}</p>
+            </div>
+          )}
+
+          <div className="report-section">
+            <h3>Assinatura digital</h3>
+
+            <label className="field-title">Digite seu nome completo</label>
+            <input
+              placeholder="Nome completo do responsável"
+              value={assinatura}
+              onChange={(e) => setAssinatura(e.target.value)}
+            />
+
+            <label className="check-line">
+              <input
+                type="checkbox"
+                checked={aceitou}
+                onChange={(e) => setAceitou(e.target.checked)}
+              />
+              Li e concordo com os termos deste contrato.
+            </label>
+
+            <button
+              className="btn-next"
+              onClick={assinarContrato}
+              disabled={salvando}
+            >
+              {salvando ? "Assinando..." : "Assinar contrato"}
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
