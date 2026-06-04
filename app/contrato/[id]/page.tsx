@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Contrato = {
@@ -23,7 +24,10 @@ type Contrato = {
   data_assinatura: string;
 };
 
-export default function ContratoPage({ params }: { params: { id: string } }) {
+export default function ContratoPage() {
+  const params = useParams();
+  const id = params.id as string;
+
   const [contrato, setContrato] = useState<Contrato | null>(null);
   const [assinatura, setAssinatura] = useState("");
   const [aceitou, setAceitou] = useState(false);
@@ -32,19 +36,20 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
   const [assinado, setAssinado] = useState(false);
 
   useEffect(() => {
-    buscarContrato();
-  }, []);
+    if (id) {
+      buscarContrato();
+    }
+  }, [id]);
 
   async function buscarContrato() {
     const { data, error } = await supabase
       .from("contratos")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", Number(id))
       .single();
 
     if (error) {
-      console.error(error);
-      alert("Contrato não encontrado.");
+      console.error("Erro ao buscar contrato:", error);
       setCarregando(false);
       return;
     }
@@ -75,12 +80,12 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
         status: "Assinado",
         data_assinatura: new Date().toISOString(),
       })
-      .eq("id", params.id);
+      .eq("id", Number(id));
 
     setSalvando(false);
 
     if (error) {
-      console.error(error);
+      console.error("Erro ao assinar contrato:", error);
       alert("Erro ao assinar contrato.");
       return;
     }
@@ -117,7 +122,9 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="success-icon">✅</div>
+
           <h1>Contrato assinado com sucesso!</h1>
+
           <p>
             Obrigado, {contrato.responsavel || contrato.empresa}. A Webmaster
             Digital recebeu sua assinatura e dará continuidade ao projeto.
@@ -159,7 +166,9 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
 
               <div>
                 <small>Contato</small>
-                <strong>{contrato.telefone || contrato.email || "Não informado"}</strong>
+                <strong>
+                  {contrato.telefone || contrato.email || "Não informado"}
+                </strong>
               </div>
             </div>
           </div>
@@ -203,17 +212,20 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
 
           <div className="report-section">
             <h3>Domínio, hospedagem e acessos</h3>
+
             <p>
               A Webmaster Digital realizará a configuração inicial do domínio,
               hospedagem e serviços necessários para o funcionamento do site,
               conforme acordado. Sempre que possível, os serviços serão
               cadastrados utilizando os dados do cliente.
             </p>
+
             <p>
               Após o período inicial incluído no projeto, custos de renovação de
               domínio, hospedagem, e-mails profissionais ou plataformas de
               terceiros serão de responsabilidade do contratante.
             </p>
+
             <p>
               A Webmaster Digital poderá manter acesso administrativo durante o
               desenvolvimento e suporte, exclusivamente para manutenção,
@@ -223,12 +235,14 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
 
           <div className="report-section">
             <h3>Garantia e manutenção</h3>
+
             <p>
               O projeto contará com 30 dias de garantia após a entrega para
               correções relacionadas ao desenvolvimento. Alterações de conteúdo,
               novas páginas, novas funcionalidades ou mudanças fora do escopo
               inicial poderão ser cobradas separadamente.
             </p>
+
             <p>
               A manutenção mensal é opcional e poderá ser contratada
               posteriormente mediante valor acordado entre as partes.
@@ -237,17 +251,20 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
 
           <div className="report-section">
             <h3>Cancelamento e reembolso</h3>
+
             <p>
               O contratante poderá solicitar cancelamento em até 2 dias corridos
               após a confirmação do pagamento da entrada, desde que o
               desenvolvimento ainda não tenha sido iniciado.
             </p>
+
             <p>
               Após esse período, ou após o início do desenvolvimento,
               planejamento, briefing, configuração de domínio, hospedagem ou
               qualquer atividade relacionada ao projeto, os valores pagos como
               entrada não serão reembolsáveis.
             </p>
+
             <p>
               A publicação definitiva do projeto e a entrega final ocorrerão
               após a confirmação do pagamento integral do valor contratado.
@@ -265,6 +282,7 @@ export default function ContratoPage({ params }: { params: { id: string } }) {
             <h3>Assinatura digital</h3>
 
             <label className="field-title">Digite seu nome completo</label>
+
             <input
               placeholder="Nome completo do responsável"
               value={assinatura}
