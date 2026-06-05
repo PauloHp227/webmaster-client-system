@@ -215,14 +215,14 @@ export default function ContratoPage() {
       cabecalho();
     }
 
-    function verificarEspaco(altura = 12) {
-      if (y + altura > pageHeight - 32) {
+    function verificarEspaco(altura = 25) {
+      if (y + altura > pageHeight - 45) {
         novaPagina();
       }
     }
 
     function titulo(textoTitulo: string) {
-      verificarEspaco(14);
+      verificarEspaco(18);
 
       pdf.setTextColor(170, 0, 0);
       pdf.setFont("helvetica", "bold");
@@ -242,16 +242,19 @@ export default function ContratoPage() {
       const linhas = pdf.splitTextToSize(conteudo, 180);
 
       linhas.forEach((linha: string) => {
-        verificarEspaco(7);
+        if (y > pageHeight - 42) {
+          novaPagina();
+        }
+
         pdf.text(linha, 15, y);
         y += 5.3;
       });
 
-      y += 4;
+      y += 5;
     }
 
     function campo(label: string, valor: string) {
-      verificarEspaco(8);
+      verificarEspaco(10);
 
       pdf.setTextColor(170, 0, 0);
       pdf.setFont("helvetica", "bold");
@@ -268,7 +271,7 @@ export default function ContratoPage() {
     }
 
     function linha() {
-      verificarEspaco(8);
+      verificarEspaco(10);
       pdf.setDrawColor(230, 230, 230);
       pdf.line(15, y, pageWidth - 15, y);
       y += 8;
@@ -312,6 +315,7 @@ export default function ContratoPage() {
       "A Webmaster Digital poderá manter acesso administrativo durante o desenvolvimento e suporte, exclusivamente para manutenção, configuração e acompanhamento técnico."
     );
 
+    verificarEspaco(55);
     titulo("Garantia e manutenção");
     texto(
       "O projeto contará com 30 dias de garantia após a entrega para correções relacionadas ao desenvolvimento. Alterações de conteúdo, novas páginas, novas funcionalidades ou mudanças fora do escopo inicial poderão ser cobradas separadamente."
@@ -321,6 +325,7 @@ export default function ContratoPage() {
       "A manutenção mensal é opcional e poderá ser contratada posteriormente mediante valor acordado entre as partes."
     );
 
+    verificarEspaco(60);
     titulo("Cancelamento e reembolso");
     texto(
       "O contratante poderá solicitar cancelamento em até 2 dias corridos após a confirmação do pagamento da entrada, desde que o desenvolvimento ainda não tenha sido iniciado."
@@ -331,14 +336,16 @@ export default function ContratoPage() {
     );
 
     texto(
-      "A publicação definitiva do projeto e a entrega final ocorrerão após a confirmação do pagamento integral do valor contratado."
+      "A publicação definitiva do projeto e a entrega final ocorrerá após a confirmação do pagamento integral do valor contratado."
     );
 
     if (contratoAtual.observacoes) {
+      verificarEspaco(45);
       titulo("Observações");
       texto(contratoAtual.observacoes);
     }
 
+    verificarEspaco(55);
     titulo("Assinatura digital");
     campo("Assinado por:", assinatura);
     campo(
@@ -354,6 +361,7 @@ export default function ContratoPage() {
 
     linha();
 
+    verificarEspaco(40);
     titulo("Contato da Webmaster Digital");
     campo("E-mail:", "webmaster.digital.br@gmail.com");
     campo("WhatsApp:", "(11) 99480-8549");
@@ -587,7 +595,7 @@ export default function ContratoPage() {
             </p>
 
             <p>
-              A publicação definitiva do projeto e a entrega final ocorrerão
+              A publicação definitiva do projeto e a entrega final ocorrerá
               após a confirmação do pagamento integral do valor contratado.
             </p>
           </div>
