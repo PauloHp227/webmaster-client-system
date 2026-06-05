@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 type Contrato = {
@@ -29,8 +28,6 @@ type Contrato = {
 export default function ContratoPage() {
   const params = useParams();
   const id = params.id as string;
-
-  const contratoRef = useRef<HTMLDivElement>(null);
 
   const [contrato, setContrato] = useState<Contrato | null>(null);
   const [assinatura, setAssinatura] = useState("");
@@ -115,39 +112,177 @@ export default function ContratoPage() {
     setAssinado(true);
   }
 
-  async function baixarPDF() {
-    if (!contratoRef.current) return;
-
-    const canvas = await html2canvas(contratoRef.current, {
-      scale: 2,
-      useCORS: true,
-    });
-
-    const imgData = canvas.toDataURL("image/png");
+  function baixarPDF() {
+    if (!contrato) return;
 
     const pdf = new jsPDF("p", "mm", "a4");
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let y = 20;
 
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    function fundo() {
+      pdf.setFillColor(12, 12, 12);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
     }
 
+    function novaPagina() {
+      pdf.addPage();
+      fundo();
+      y = 20;
+    }
+
+    function verificarEspaco(altura = 12) {
+      if (y + altura > pageHeight - 15) {
+        novaPagina();
+      }
+    }
+
+    function titulo(texto: string) {
+      verificarEspaco(14);
+
+      pdf.setTextColor(220, 30, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(13);
+      pdf.text(texto, 20, y);
+      y += 9;
+    }
+
+    function texto(conteudo: string) {
+      if (!conteudo) return;
+
+      pdf.setTextColor(230, 230, 230);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+
+      const linhas = pdf.splitTextToSize(conteudo, 170);
+
+      linhas.forEach((linha: string) => {
+        verificarEspaco(7);
+        pdf.text(linha, 20, y);
+        y += 6;
+      });
+
+      y += 4;
+    }
+
+    function campo(label: string, valor: string) {
+      verificarEspaco(8);
+
+      pdf.setTextColor(220, 30, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text(label, 20, y);
+
+      pdf.setTextColor(245, 245, 245);
+      pdf.setFont("helvetica", "normal");
+
+      const valorFormatado = valor || "Não informado";
+      const linhas = pdf.splitTextToSize(valorFormatado, 125);
+
+      pdf.text(linhas, 65, y);
+      y += linhas.length * 6 + 2;
+    }
+
+    fundo();
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(20);
+    pdf.text("WEBMASTER DIGITAL", 20, y);
+    y += 8;
+
+    pdf.setTextColor(200, 200, 200);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    pdf.text("Criação de Sites & Design", 20, y);
+    y += 16;
+
+    pdf.setTextColor(220, 30, 30);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 20, y);
+    y += 14;
+
+    titulo("Dados do contrato");
+    campo("Empresa:", contrato.empresa);
+    campo("Responsável:", assinatura || contrato.responsavel);
+    campo("E-mail:", email);
+    campo("Telefone:", telefone);
+    campo("CPF/CNPJ:", cpfCnpj || "Não informado");
+    campo("Status:", "Assinado digitalmente");
+
+    y += 4;
+
+    titulo("Serviço contratado");
+    texto(
+      `A Webmaster Digital prestará o serviço de ${contrato.servico} para a empresa ${contrato.empresa}, conforme informações fornecidas pelo contratante e escopo acordado entre as partes.`
+    );
+
+    campo("Valor total:", contrato.valor_total);
+    campo("Entrada:", contrato.entrada);
+    campo("Restante:", contrato.restante);
+    campo("Forma de pagamento:", contrato.forma_pagamento);
+    campo("Prazo:", contrato.prazo);
+
+    y += 4;
+
+    titulo("Domínio, hospedagem e acessos");
+    texto(
+      "A Webmaster Digital realizará a configuração inicial do domínio, hospedagem e serviços necessários para o funcionamento do site, conforme acordado. Sempre que possível, os serviços serão cadastrados utilizando os dados do cliente."
+    );
+
+    texto(
+      "Após o período inicial incluído no projeto, custos de renovação de domínio, hospedagem, e-mails profissionais ou plataformas de terceiros serão de responsabilidade do contratante."
+    );
+
+    texto(
+      "A Webmaster Digital poderá manter acesso administrativo durante o desenvolvimento e suporte, exclusivamente para manutenção, configuração e acompanhamento técnico."
+    );
+
+    titulo("Garantia e manutenção");
+    texto(
+      "O projeto contará com 30 dias de garantia após a entrega para correções relacionadas ao desenvolvimento. Alterações de conteúdo, novas páginas, novas funcionalidades ou mudanças fora do escopo inicial poderão ser cobradas separadamente."
+    );
+
+    texto(
+      "A manutenção mensal é opcional e poderá ser contratada posteriormente mediante valor acordado entre as partes."
+    );
+
+    titulo("Cancelamento e reembolso");
+    texto(
+      "O contratante poderá solicitar cancelamento em até 2 dias corridos após a confirmação do pagamento da entrada, desde que o desenvolvimento ainda não tenha sido iniciado."
+    );
+
+    texto(
+      "Após esse período, ou após o início do desenvolvimento, planejamento, briefing, configuração de domínio, hospedagem ou qualquer atividade relacionada ao projeto, os valores pagos como entrada não serão reembolsáveis."
+    );
+
+    texto(
+      "A publicação definitiva do projeto e a entrega final ocorrerão após a confirmação do pagamento integral do valor contratado."
+    );
+
+    if (contrato.observacoes) {
+      titulo("Observações");
+      texto(contrato.observacoes);
+    }
+
+    titulo("Assinatura digital");
+    campo("Assinado por:", assinatura);
+    campo(
+      "Data:",
+      new Date().toLocaleDateString("pt-BR") +
+        " às " +
+        new Date().toLocaleTimeString("pt-BR")
+    );
+
+    texto(
+      "Ao assinar digitalmente este contrato, o contratante declara que leu, compreendeu e concorda com todos os termos descritos neste documento."
+    );
+
     const nomeEmpresa =
-      contrato?.empresa
+      contrato.empresa
         ?.toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -181,7 +316,7 @@ export default function ContratoPage() {
   if (assinado) {
     return (
       <main className="briefing-page">
-        <section className="briefing-card success-card" ref={contratoRef}>
+        <section className="briefing-card success-card">
           <div className="briefing-brand">
             <img src="/logo.png" alt="Webmaster Digital" />
           </div>
@@ -242,7 +377,7 @@ export default function ContratoPage() {
 
   return (
     <main className="briefing-page">
-      <section className="briefing-card" ref={contratoRef}>
+      <section className="briefing-card">
         <div className="briefing-brand">
           <img src="/logo.png" alt="Webmaster Digital" />
         </div>
@@ -262,7 +397,9 @@ export default function ContratoPage() {
 
               <div>
                 <small>Responsável</small>
-                <strong>{assinatura || contrato.responsavel || "A preencher"}</strong>
+                <strong>
+                  {assinatura || contrato.responsavel || "A preencher"}
+                </strong>
               </div>
 
               <div>
