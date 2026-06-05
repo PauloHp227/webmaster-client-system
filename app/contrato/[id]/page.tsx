@@ -116,52 +116,72 @@ export default function ContratoPage() {
     if (!contrato) return;
 
     const pdf = new jsPDF("p", "mm", "a4");
-
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
 
-    let y = 20;
+    let y = 18;
 
     function fundo() {
-      pdf.setFillColor(12, 12, 12);
+      pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pageWidth, pageHeight, "F");
     }
 
+    function rodape() {
+      pdf.setDrawColor(230, 230, 230);
+      pdf.line(15, pageHeight - 22, pageWidth - 15, pageHeight - 22);
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(90, 90, 90);
+
+      pdf.text(
+        "Webmaster Digital | webmaster.digital.br@gmail.com | WhatsApp: (11) 99480-8549 | Instagram: @web.masterdigital_",
+        pageWidth / 2,
+        pageHeight - 14,
+        { align: "center" }
+      );
+
+      pdf.text(
+        `Contrato #${contrato.id} - Documento gerado digitalmente`,
+        pageWidth / 2,
+        pageHeight - 9,
+        { align: "center" }
+      );
+    }
+
     function novaPagina() {
+      rodape();
       pdf.addPage();
       fundo();
-      y = 20;
+      y = 18;
     }
 
     function verificarEspaco(altura = 12) {
-      if (y + altura > pageHeight - 15) {
-        novaPagina();
-      }
+      if (y + altura > pageHeight - 28) novaPagina();
     }
 
     function titulo(texto: string) {
       verificarEspaco(14);
-
-      pdf.setTextColor(220, 30, 30);
+      pdf.setTextColor(190, 25, 25);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(13);
-      pdf.text(texto, 20, y);
-      y += 9;
+      pdf.text(texto, 15, y);
+      y += 8;
     }
 
     function texto(conteudo: string) {
       if (!conteudo) return;
 
-      pdf.setTextColor(230, 230, 230);
+      pdf.setTextColor(35, 35, 35);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(10);
 
-      const linhas = pdf.splitTextToSize(conteudo, 170);
+      const linhas = pdf.splitTextToSize(conteudo, 180);
 
       linhas.forEach((linha: string) => {
         verificarEspaco(7);
-        pdf.text(linha, 20, y);
-        y += 6;
+        pdf.text(linha, 15, y);
+        y += 5.5;
       });
 
       y += 4;
@@ -170,127 +190,155 @@ export default function ContratoPage() {
     function campo(label: string, valor: string) {
       verificarEspaco(8);
 
-      pdf.setTextColor(220, 30, 30);
+      pdf.setTextColor(190, 25, 25);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10);
-      pdf.text(label, 20, y);
+      pdf.text(label, 15, y);
 
-      pdf.setTextColor(245, 245, 245);
+      pdf.setTextColor(25, 25, 25);
       pdf.setFont("helvetica", "normal");
 
-      const valorFormatado = valor || "Não informado";
-      const linhas = pdf.splitTextToSize(valorFormatado, 125);
+      const linhas = pdf.splitTextToSize(valor || "Não informado", 130);
+      pdf.text(linhas, 58, y);
 
-      pdf.text(linhas, 65, y);
-      y += linhas.length * 6 + 2;
+      y += linhas.length * 5.5 + 2;
+    }
+
+    function linha() {
+      verificarEspaco(8);
+      pdf.setDrawColor(230, 230, 230);
+      pdf.line(15, y, pageWidth - 15, y);
+      y += 8;
     }
 
     fundo();
 
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(20);
-    pdf.text("WEBMASTER DIGITAL", 20, y);
-    y += 8;
+    const logo = new Image();
+    logo.src = "/logo.png";
 
-    pdf.setTextColor(200, 200, 200);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(11);
-    pdf.text("Criação de Sites & Design", 20, y);
-    y += 16;
+    logo.onload = () => {
+      try {
+        pdf.addImage(logo, "PNG", 15, 10, 42, 18);
+      } catch {
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(16);
+        pdf.setTextColor(190, 25, 25);
+        pdf.text("WEBMASTER DIGITAL", 15, 18);
+      }
 
-    pdf.setTextColor(220, 30, 30);
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(16);
-    pdf.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", 20, y);
-    y += 14;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.setTextColor(20, 20, 20);
+      pdf.text("CONTRATO DE PRESTAÇÃO DE SERVIÇOS", pageWidth - 15, 18, {
+        align: "right",
+      });
 
-    titulo("Dados do contrato");
-    campo("Empresa:", contrato.empresa);
-    campo("Responsável:", assinatura || contrato.responsavel);
-    campo("E-mail:", email);
-    campo("Telefone:", telefone);
-    campo("CPF/CNPJ:", cpfCnpj || "Não informado");
-    campo("Status:", "Assinado digitalmente");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(90, 90, 90);
+      pdf.text("Criação de Sites • Landing Pages • Sistemas Web", pageWidth - 15, 25, {
+        align: "right",
+      });
 
-    y += 4;
+      y = 38;
+      linha();
 
-    titulo("Serviço contratado");
-    texto(
-      `A Webmaster Digital prestará o serviço de ${contrato.servico} para a empresa ${contrato.empresa}, conforme informações fornecidas pelo contratante e escopo acordado entre as partes.`
-    );
+      titulo("Dados do contrato");
+      campo("Empresa:", contrato.empresa);
+      campo("Responsável:", assinatura || contrato.responsavel);
+      campo("E-mail:", email);
+      campo("Telefone:", telefone);
+      campo("CPF/CNPJ:", cpfCnpj || "Não informado");
+      campo("Status:", "Assinado digitalmente");
 
-    campo("Valor total:", contrato.valor_total);
-    campo("Entrada:", contrato.entrada);
-    campo("Restante:", contrato.restante);
-    campo("Forma de pagamento:", contrato.forma_pagamento);
-    campo("Prazo:", contrato.prazo);
+      linha();
 
-    y += 4;
+      titulo("Serviço contratado");
+      texto(
+        `A Webmaster Digital prestará o serviço de ${contrato.servico} para a empresa ${contrato.empresa}, conforme informações fornecidas pelo contratante e escopo acordado entre as partes.`
+      );
 
-    titulo("Domínio, hospedagem e acessos");
-    texto(
-      "A Webmaster Digital realizará a configuração inicial do domínio, hospedagem e serviços necessários para o funcionamento do site, conforme acordado. Sempre que possível, os serviços serão cadastrados utilizando os dados do cliente."
-    );
+      campo("Valor total:", contrato.valor_total);
+      campo("Entrada:", contrato.entrada);
+      campo("Restante:", contrato.restante);
+      campo("Forma de pagamento:", contrato.forma_pagamento);
+      campo("Prazo:", contrato.prazo);
 
-    texto(
-      "Após o período inicial incluído no projeto, custos de renovação de domínio, hospedagem, e-mails profissionais ou plataformas de terceiros serão de responsabilidade do contratante."
-    );
+      linha();
 
-    texto(
-      "A Webmaster Digital poderá manter acesso administrativo durante o desenvolvimento e suporte, exclusivamente para manutenção, configuração e acompanhamento técnico."
-    );
+      titulo("Domínio, hospedagem e acessos");
+      texto(
+        "A Webmaster Digital realizará a configuração inicial do domínio, hospedagem e serviços necessários para o funcionamento do site, conforme acordado. Sempre que possível, os serviços serão cadastrados utilizando os dados do cliente."
+      );
 
-    titulo("Garantia e manutenção");
-    texto(
-      "O projeto contará com 30 dias de garantia após a entrega para correções relacionadas ao desenvolvimento. Alterações de conteúdo, novas páginas, novas funcionalidades ou mudanças fora do escopo inicial poderão ser cobradas separadamente."
-    );
+      texto(
+        "Após o período inicial incluído no projeto, custos de renovação de domínio, hospedagem, e-mails profissionais ou plataformas de terceiros serão de responsabilidade do contratante."
+      );
 
-    texto(
-      "A manutenção mensal é opcional e poderá ser contratada posteriormente mediante valor acordado entre as partes."
-    );
+      texto(
+        "A Webmaster Digital poderá manter acesso administrativo durante o desenvolvimento e suporte, exclusivamente para manutenção, configuração e acompanhamento técnico."
+      );
 
-    titulo("Cancelamento e reembolso");
-    texto(
-      "O contratante poderá solicitar cancelamento em até 2 dias corridos após a confirmação do pagamento da entrada, desde que o desenvolvimento ainda não tenha sido iniciado."
-    );
+      titulo("Garantia e manutenção");
+      texto(
+        "O projeto contará com 30 dias de garantia após a entrega para correções relacionadas ao desenvolvimento. Alterações de conteúdo, novas páginas, novas funcionalidades ou mudanças fora do escopo inicial poderão ser cobradas separadamente."
+      );
 
-    texto(
-      "Após esse período, ou após o início do desenvolvimento, planejamento, briefing, configuração de domínio, hospedagem ou qualquer atividade relacionada ao projeto, os valores pagos como entrada não serão reembolsáveis."
-    );
+      texto(
+        "A manutenção mensal é opcional e poderá ser contratada posteriormente mediante valor acordado entre as partes."
+      );
 
-    texto(
-      "A publicação definitiva do projeto e a entrega final ocorrerão após a confirmação do pagamento integral do valor contratado."
-    );
+      titulo("Cancelamento e reembolso");
+      texto(
+        "O contratante poderá solicitar cancelamento em até 2 dias corridos após a confirmação do pagamento da entrada, desde que o desenvolvimento ainda não tenha sido iniciado."
+      );
 
-    if (contrato.observacoes) {
-      titulo("Observações");
-      texto(contrato.observacoes);
-    }
+      texto(
+        "Após esse período, ou após o início do desenvolvimento, planejamento, briefing, configuração de domínio, hospedagem ou qualquer atividade relacionada ao projeto, os valores pagos como entrada não serão reembolsáveis."
+      );
 
-    titulo("Assinatura digital");
-    campo("Assinado por:", assinatura);
-    campo(
-      "Data:",
-      new Date().toLocaleDateString("pt-BR") +
-        " às " +
-        new Date().toLocaleTimeString("pt-BR")
-    );
+      texto(
+        "A publicação definitiva do projeto e a entrega final ocorrerão após a confirmação do pagamento integral do valor contratado."
+      );
 
-    texto(
-      "Ao assinar digitalmente este contrato, o contratante declara que leu, compreendeu e concorda com todos os termos descritos neste documento."
-    );
+      if (contrato.observacoes) {
+        titulo("Observações");
+        texto(contrato.observacoes);
+      }
 
-    const nomeEmpresa =
-      contrato.empresa
-        ?.toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "") || "cliente";
+      titulo("Assinatura digital");
+      campo("Assinado por:", assinatura);
+      campo(
+        "Data:",
+        new Date().toLocaleDateString("pt-BR") +
+          " às " +
+          new Date().toLocaleTimeString("pt-BR")
+      );
 
-    pdf.save(`contrato-${nomeEmpresa}.pdf`);
+      texto(
+        "Ao assinar digitalmente este contrato, o contratante declara que leu, compreendeu e concorda com todos os termos descritos neste documento."
+      );
+
+      linha();
+
+      titulo("Contato da Webmaster Digital");
+      campo("E-mail:", "webmaster.digital.br@gmail.com");
+      campo("WhatsApp:", "(11) 99480-8549");
+      campo("Instagram:", "@web.masterdigital_");
+
+      rodape();
+
+      const nomeEmpresa =
+        contrato.empresa
+          ?.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "") || "cliente";
+
+      pdf.save(`contrato-${nomeEmpresa}.pdf`);
+    };
   }
 
   if (carregando) {
