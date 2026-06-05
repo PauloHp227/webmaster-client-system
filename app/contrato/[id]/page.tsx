@@ -130,6 +130,8 @@ export default function ContratoPage() {
   async function baixarPDF() {
     if (!contrato) return;
 
+    const contratoAtual = contrato;
+
     const pdf = new jsPDF("p", "mm", "a4");
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -164,7 +166,7 @@ export default function ContratoPage() {
       );
 
       pdf.text(
-        `Contrato #${contrato.id} - Documento assinado digitalmente`,
+        `Contrato #${contratoAtual.id} - Documento assinado digitalmente`,
         pageWidth / 2,
         pageHeight - 10,
         { align: "center" }
@@ -193,9 +195,12 @@ export default function ContratoPage() {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
       pdf.setTextColor(90, 90, 90);
-      pdf.text("Criação de Sites • Landing Pages • Sistemas Web", pageWidth - 15, 25, {
-        align: "right",
-      });
+      pdf.text(
+        "Criação de Sites • Landing Pages • Sistemas Web",
+        pageWidth - 15,
+        25,
+        { align: "right" }
+      );
 
       pdf.setDrawColor(190, 25, 25);
       pdf.setLineWidth(0.8);
@@ -272,8 +277,8 @@ export default function ContratoPage() {
     cabecalho();
 
     titulo("Dados do contrato");
-    campo("Empresa:", contrato.empresa);
-    campo("Responsável:", assinatura || contrato.responsavel);
+    campo("Empresa:", contratoAtual.empresa);
+    campo("Responsável:", assinatura || contratoAtual.responsavel);
     campo("E-mail:", email);
     campo("Telefone:", telefone);
     campo("CPF/CNPJ:", cpfCnpj || "Não informado");
@@ -283,14 +288,14 @@ export default function ContratoPage() {
 
     titulo("Serviço contratado");
     texto(
-      `A Webmaster Digital prestará o serviço de ${contrato.servico} para a empresa ${contrato.empresa}, conforme informações fornecidas pelo contratante e escopo acordado entre as partes.`
+      `A Webmaster Digital prestará o serviço de ${contratoAtual.servico} para a empresa ${contratoAtual.empresa}, conforme informações fornecidas pelo contratante e escopo acordado entre as partes.`
     );
 
-    campo("Valor total:", contrato.valor_total);
-    campo("Entrada:", contrato.entrada);
-    campo("Restante:", contrato.restante);
-    campo("Forma de pagamento:", contrato.forma_pagamento);
-    campo("Prazo:", contrato.prazo);
+    campo("Valor total:", contratoAtual.valor_total);
+    campo("Entrada:", contratoAtual.entrada);
+    campo("Restante:", contratoAtual.restante);
+    campo("Forma de pagamento:", contratoAtual.forma_pagamento);
+    campo("Prazo:", contratoAtual.prazo);
 
     linha();
 
@@ -329,9 +334,9 @@ export default function ContratoPage() {
       "A publicação definitiva do projeto e a entrega final ocorrerão após a confirmação do pagamento integral do valor contratado."
     );
 
-    if (contrato.observacoes) {
+    if (contratoAtual.observacoes) {
       titulo("Observações");
-      texto(contrato.observacoes);
+      texto(contratoAtual.observacoes);
     }
 
     titulo("Assinatura digital");
@@ -357,7 +362,7 @@ export default function ContratoPage() {
     rodape();
 
     const nomeEmpresa =
-      contrato.empresa
+      contratoAtual.empresa
         ?.toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
