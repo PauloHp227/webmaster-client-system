@@ -14,6 +14,9 @@ type BriefingForm = {
   segmento: string;
   whatsapp: string;
   instagram: string;
+  planoDesejado: string;
+  prazoDesejado: string;
+  manutencao: string;
   objetivoSelecionado: string;
   objetivo: string;
   servicos: string;
@@ -36,6 +39,9 @@ export default function FormularioClientePage() {
     segmento: "",
     whatsapp: "",
     instagram: "",
+    planoDesejado: "",
+    prazoDesejado: "",
+    manutencao: "",
     objetivoSelecionado: "",
     objetivo: "",
     servicos: "",
@@ -168,6 +174,10 @@ export default function FormularioClientePage() {
           whatsapp: form.whatsapp,
           instagram: form.instagram,
 
+          plano_desejado: form.planoDesejado,
+          prazo_desejado: form.prazoDesejado,
+          manutencao: form.manutencao,
+
           objetivo_selecionado: form.objetivoSelecionado,
           objetivo: form.objetivo,
           servicos: form.servicos,
@@ -286,9 +296,95 @@ export default function FormularioClientePage() {
               site alinhado ao seu negócio.
             </p>
 
-            <div className="tip-box">
-              💡 Dica: não precisa responder perfeitamente. Escreva da forma que
-              achar melhor.
+            <label className="field-title">Qual plano você deseja?</label>
+
+            <div className="choice-grid">
+              {[
+                "Site Básico - R$300",
+                "Catálogo Online - R$400",
+                "Loja Virtual Completa - R$700",
+                "Ainda quero conversar melhor",
+              ].map((plano) => (
+                <button
+                  key={plano}
+                  type="button"
+                  className={`choice-card ${
+                    form.planoDesejado === plano ? "selected" : ""
+                  }`}
+                  onClick={() => atualizarCampo("planoDesejado", plano)}
+                >
+                  {plano}
+                </button>
+              ))}
+            </div>
+
+            {form.planoDesejado === "Site Básico - R$300" && (
+              <div className="tip-box">
+                Este plano não inclui 1 mês de garantia. A manutenção é
+                opcional e custa R$50/mês após a entrega do projeto.
+              </div>
+            )}
+
+            {form.planoDesejado === "Catálogo Online - R$400" && (
+              <div className="tip-box">
+                Este plano inclui 1 mês de garantia. Após esse período, a
+                manutenção opcional custa R$65/mês.
+              </div>
+            )}
+
+            {form.planoDesejado === "Loja Virtual Completa - R$700" && (
+              <div className="tip-box">
+                Este plano inclui 1 mês de garantia. Após esse período, a
+                manutenção opcional custa R$80/mês.
+              </div>
+            )}
+
+            <label className="field-title">
+              Qual prazo você deseja para entrega?
+            </label>
+
+            <div className="choice-grid">
+              {[
+                "Até 7 dias úteis",
+                "Até 10 dias úteis",
+                "Até 15 dias úteis",
+                "Até 30 dias",
+                "Não tenho urgência",
+              ].map((prazo) => (
+                <button
+                  key={prazo}
+                  type="button"
+                  className={`choice-card ${
+                    form.prazoDesejado === prazo ? "selected" : ""
+                  }`}
+                  onClick={() => atualizarCampo("prazoDesejado", prazo)}
+                >
+                  {prazo}
+                </button>
+              ))}
+            </div>
+
+            <label className="field-title">
+              Interesse em manutenção mensal?
+            </label>
+
+            <div className="choice-grid">
+              {[
+                "Sim, tenho interesse",
+                "Ainda não sei",
+                "Não tenho interesse",
+              ].map((opcao) => (
+                <button
+                  key={opcao}
+                  type="button"
+                  className={`choice-card ${
+                    form.manutencao === opcao ? "selected" : ""
+                  }`}
+                  onClick={() => atualizarCampo("manutencao", opcao)}
+                >
+                  {opcao}
+                </button>
+              ))}
             </div>
 
             <label className="field-title">
@@ -317,17 +413,6 @@ export default function FormularioClientePage() {
               ))}
             </div>
 
-            <div className="example-box">
-              Exemplos:
-              <ul>
-                <li>Apresentar minha empresa na internet</li>
-                <li>Receber mais contatos e orçamentos</li>
-                <li>Divulgar meus serviços</li>
-                <li>Mostrar meu portfólio</li>
-                <li>Vender produtos online</li>
-              </ul>
-            </div>
-
             <textarea
               placeholder="Ex: Quero apresentar minha empresa e receber mais contatos pelo WhatsApp."
               value={form.objetivo}
@@ -338,17 +423,6 @@ export default function FormularioClientePage() {
               Quais serviços ou produtos deseja destacar?
             </label>
 
-            <div className="example-box">
-              Exemplos:
-              <ul>
-                <li>Consultorias</li>
-                <li>Serviços especializados</li>
-                <li>Produtos físicos</li>
-                <li>Atendimentos personalizados</li>
-                <li>Cursos e treinamentos</li>
-              </ul>
-            </div>
-
             <textarea
               placeholder="Ex: Quero destacar meus principais serviços, produtos e formas de atendimento."
               value={form.servicos}
@@ -358,17 +432,6 @@ export default function FormularioClientePage() {
             <label className="field-title">
               O que diferencia sua empresa dos concorrentes?
             </label>
-
-            <div className="example-box">
-              Exemplos:
-              <ul>
-                <li>Atendimento personalizado</li>
-                <li>Experiência no mercado</li>
-                <li>Equipe qualificada</li>
-                <li>Rapidez no atendimento</li>
-                <li>Qualidade dos serviços</li>
-              </ul>
-            </div>
 
             <textarea
               placeholder="Ex: Minha empresa se diferencia pelo atendimento, qualidade e experiência."
@@ -381,11 +444,6 @@ export default function FormularioClientePage() {
         {step === 3 && (
           <div className="briefing-step">
             <h1>Visual e referências</h1>
-
-            <p>
-              Agora queremos entender o estilo visual que combina com sua
-              empresa.
-            </p>
 
             <label className="field-title">Qual estilo você prefere?</label>
 
@@ -411,17 +469,6 @@ export default function FormularioClientePage() {
 
             <label className="field-title">Cores desejadas</label>
 
-            <div className="example-box">
-              Exemplos:
-              <ul>
-                <li>Azul e branco</li>
-                <li>Preto e dourado</li>
-                <li>Vermelho e preto</li>
-                <li>Verde e branco</li>
-                <li>Utilizar as cores da logo</li>
-              </ul>
-            </div>
-
             <input
               placeholder="Ex: Quero usar as cores da minha logo."
               value={form.cores}
@@ -429,11 +476,6 @@ export default function FormularioClientePage() {
             />
 
             <label className="field-title">Sites de referência</label>
-
-            <div className="tip-box">
-              💡 Você pode enviar sites que gosta pelo visual, organização ou
-              estilo. Não precisam ser do mesmo segmento da sua empresa.
-            </div>
 
             <textarea
               placeholder="Cole links de sites que você gosta ou descreva o estilo desejado."
@@ -446,11 +488,6 @@ export default function FormularioClientePage() {
         {step === 4 && (
           <div className="briefing-step">
             <h1>Materiais do projeto</h1>
-
-            <p>
-              Informe quais materiais você já possui para usarmos no
-              desenvolvimento.
-            </p>
 
             <label className="field-title">Você já possui logo?</label>
 
@@ -506,18 +543,6 @@ export default function FormularioClientePage() {
 
             <label className="field-title">Materiais disponíveis</label>
 
-            <div className="example-box">
-              Exemplos:
-              <ul>
-                <li>Logo da empresa</li>
-                <li>Fotos dos serviços</li>
-                <li>Fotos dos produtos</li>
-                <li>Textos institucionais</li>
-                <li>Catálogo ou apresentação</li>
-                <li>Vídeo institucional</li>
-              </ul>
-            </div>
-
             <textarea
               placeholder="Ex: Tenho logo, algumas fotos, vídeos e materiais da empresa."
               value={form.materiais}
@@ -528,24 +553,17 @@ export default function FormularioClientePage() {
 
         {step === 5 && (
           <div className="briefing-step">
-            <h1>Confirmação e assinatura</h1>
+            <h1>Confirmação</h1>
 
             <p>
-              Confirme as informações enviadas. Em breve esta etapa terá
-              assinatura digital e geração automática de PDF.
+              Confirme as informações enviadas. Após o envio, a Webmaster
+              Digital analisará tudo e dará continuidade ao projeto.
             </p>
-
-            <div className="signature-box">Área futura para assinatura digital</div>
 
             <label className="check-line">
               <input type="checkbox" />
               Confirmo que as informações enviadas estão corretas.
             </label>
-
-            <div className="tip-box">
-              Após o envio, a Webmaster Digital analisará as informações e dará
-              continuidade ao projeto.
-            </div>
           </div>
         )}
 
