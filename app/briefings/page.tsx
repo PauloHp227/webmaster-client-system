@@ -4,26 +4,46 @@ import AppShell from "@/components/AppShell";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
+type ArquivoBriefing = {
+  nome: string;
+  tipo: string;
+  url: string;
+  caminho?: string;
+};
+
 type Briefing = {
   id: string;
   empresa: string;
   segmento: string;
   whatsapp: string;
   instagram: string;
+
+  objetivo_selecionado?: string;
   objetivo: string;
   servicos: string;
   diferencial: string;
+
   estilo: string;
+  cores?: string;
+  referencias?: string;
+
+  possui_logo?: string;
+  materiais?: string;
+
   status: string;
   criado_em: string;
+
   arquivo_url?: string;
   arquivo_nome?: string;
   arquivo_tipo?: string;
+
+  arquivos?: ArquivoBriefing[];
 };
 
 export default function BriefingsPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
-  const [briefingSelecionado, setBriefingSelecionado] = useState<Briefing | null>(null);
+  const [briefingSelecionado, setBriefingSelecionado] =
+    useState<Briefing | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
 
@@ -87,7 +107,8 @@ export default function BriefingsPage() {
     const combinaBusca =
       briefing.empresa?.toLowerCase().includes(textoBusca) ||
       briefing.segmento?.toLowerCase().includes(textoBusca) ||
-      briefing.whatsapp?.toLowerCase().includes(textoBusca);
+      briefing.whatsapp?.toLowerCase().includes(textoBusca) ||
+      briefing.instagram?.toLowerCase().includes(textoBusca);
 
     const combinaStatus =
       filtroStatus === "Todos" || briefing.status === filtroStatus;
@@ -106,7 +127,7 @@ export default function BriefingsPage() {
         <div className="filters-row">
           <input
             className="search-input"
-            placeholder="Buscar por empresa, segmento ou WhatsApp..."
+            placeholder="Buscar por empresa, segmento, WhatsApp ou Instagram..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -179,10 +200,16 @@ export default function BriefingsPage() {
             <div className="report-header">
               <div>
                 <span>Relatório de briefing</span>
-                <h2>{briefingSelecionado.empresa || "Empresa não informada"}</h2>
+                <h2>
+                  {briefingSelecionado.empresa || "Empresa não informada"}
+                </h2>
                 <p>
                   Recebido em{" "}
-                  {new Date(briefingSelecionado.criado_em).toLocaleDateString("pt-BR")}
+                  {briefingSelecionado.criado_em
+                    ? new Date(
+                        briefingSelecionado.criado_em
+                      ).toLocaleDateString("pt-BR")
+                    : "Data não informada"}
                 </p>
                 <p>Status: {briefingSelecionado.status || "Novo"}</p>
               </div>
@@ -201,22 +228,30 @@ export default function BriefingsPage() {
               <div className="report-grid">
                 <div>
                   <small>Empresa</small>
-                  <strong>{briefingSelecionado.empresa || "Não informado"}</strong>
+                  <strong>
+                    {briefingSelecionado.empresa || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
                   <small>Segmento</small>
-                  <strong>{briefingSelecionado.segmento || "Não informado"}</strong>
+                  <strong>
+                    {briefingSelecionado.segmento || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
                   <small>WhatsApp</small>
-                  <strong>{briefingSelecionado.whatsapp || "Não informado"}</strong>
+                  <strong>
+                    {briefingSelecionado.whatsapp || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
                   <small>Instagram</small>
-                  <strong>{briefingSelecionado.instagram || "Não informado"}</strong>
+                  <strong>
+                    {briefingSelecionado.instagram || "Não informado"}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -226,8 +261,23 @@ export default function BriefingsPage() {
 
               <div className="report-grid">
                 <div>
+                  <small>Objetivo selecionado</small>
+                  <strong>
+                    {briefingSelecionado.objetivo_selecionado ||
+                      "Não informado"}
+                  </strong>
+                </div>
+
+                <div>
                   <small>Estilo visual</small>
-                  <strong>{briefingSelecionado.estilo || "Não informado"}</strong>
+                  <strong>
+                    {briefingSelecionado.estilo || "Não informado"}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>Cores desejadas</small>
+                  <strong>{briefingSelecionado.cores || "Não informado"}</strong>
                 </div>
 
                 <div>
@@ -254,12 +304,67 @@ export default function BriefingsPage() {
                 <small>Diferenciais da empresa</small>
                 <p>{briefingSelecionado.diferencial || "Não informado"}</p>
               </div>
+
+              <div className="report-text">
+                <small>Sites de referência</small>
+                <p>{briefingSelecionado.referencias || "Não informado"}</p>
+              </div>
+
+              <div className="report-text">
+                <small>Possui logo?</small>
+                <p>{briefingSelecionado.possui_logo || "Não informado"}</p>
+              </div>
+
+              <div className="report-text">
+                <small>Materiais disponíveis</small>
+                <p>{briefingSelecionado.materiais || "Não informado"}</p>
+              </div>
             </div>
 
             <div className="report-section">
-              <h3>Arquivo enviado</h3>
+              <h3>Arquivos enviados</h3>
 
-              {briefingSelecionado.arquivo_url ? (
+              {briefingSelecionado.arquivos &&
+              briefingSelecionado.arquivos.length > 0 ? (
+                <div className="file-preview">
+                  {briefingSelecionado.arquivos.map((arquivo, index) => (
+                    <div key={index} className="file-selected-box">
+                      <div>
+                        <strong>{arquivo.nome || `Arquivo ${index + 1}`}</strong>
+                        <br />
+                        <span>{arquivo.tipo || "Tipo não informado"}</span>
+                      </div>
+
+                      {arquivo.tipo?.startsWith("image/") && (
+                        <img
+                          src={arquivo.url}
+                          alt={arquivo.nome || "Imagem enviada"}
+                        />
+                      )}
+
+                      {arquivo.tipo === "application/pdf" && (
+                        <iframe
+                          src={arquivo.url}
+                          title={arquivo.nome || "PDF enviado"}
+                        />
+                      )}
+
+                      {arquivo.tipo === "video/mp4" && (
+                        <video src={arquivo.url} controls />
+                      )}
+
+                      <a
+                        href={arquivo.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-primary no-print"
+                      >
+                        Abrir arquivo
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : briefingSelecionado.arquivo_url ? (
                 <div className="file-preview">
                   <strong>{briefingSelecionado.arquivo_nome || "Arquivo"}</strong>
 

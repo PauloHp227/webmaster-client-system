@@ -127,7 +127,6 @@ export default function FormularioClientePage() {
       setEnviando(true);
 
       const empresaLimpa = limparNomeEmpresa(form.empresa);
-
       const arquivosEnviados = [];
 
       for (const arquivo of form.arquivos) {
@@ -168,12 +167,21 @@ export default function FormularioClientePage() {
           segmento: form.segmento,
           whatsapp: form.whatsapp,
           instagram: form.instagram,
+
+          objetivo_selecionado: form.objetivoSelecionado,
           objetivo: form.objetivo,
           servicos: form.servicos,
           diferencial: form.diferencial,
+
           estilo: form.estilo,
+          cores: form.cores,
+          referencias: form.referencias,
+          possui_logo: form.possuiLogo,
+          materiais: form.materiais,
+
           status: "Novo",
           criado_em: new Date().toISOString(),
+
           arquivo_url: primeiroArquivo?.url || "",
           arquivo_nome: primeiroArquivo?.nome || "",
           arquivo_tipo: primeiroArquivo?.tipo || "",
