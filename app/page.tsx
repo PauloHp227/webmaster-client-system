@@ -45,6 +45,27 @@ export default function Home() {
     setCarregando(false);
   }
 
+  function converterValor(valor: string) {
+    if (!valor) return 0;
+
+    const numero = Number(
+      String(valor)
+        .replace("R$", "")
+        .replace(/\./g, "")
+        .replace(",", ".")
+        .trim()
+    );
+
+    return isNaN(numero) ? 0 : numero;
+  }
+
+  function formatarMoeda(valor: number) {
+    return valor.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
+
   const totalBriefings = briefings.length;
 
   const projetosEmAndamento = briefings.filter(
@@ -59,10 +80,21 @@ export default function Home() {
     (item) => item.status === "Assinado"
   ).length;
 
+  const contratosPendentes = contratos.filter(
+    (item) => item.status !== "Assinado"
+  ).length;
+
   const clientesUnicos = new Set([
     ...briefings.map((item) => item.empresa),
     ...contratos.map((item) => item.empresa),
   ]).size;
+
+  const receitaTotal = contratos.reduce((total, contrato) => {
+    return total + converterValor(contrato.valor_total);
+  }, 0);
+
+  const ticketMedio =
+    contratos.length > 0 ? receitaTotal / contratos.length : 0;
 
   const ultimasAtividades = [
     ...briefings.map((item) => ({
@@ -84,7 +116,7 @@ export default function Home() {
       (a, b) =>
         new Date(b.data || "").getTime() - new Date(a.data || "").getTime()
     )
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
     <AppShell
@@ -94,7 +126,7 @@ export default function Home() {
       <section className="hero-panel">
         <div>
           <span>Webmaster Digital CRM</span>
-          <h2>Gestão profissional para seus projetos de sites</h2>
+          <h2>Gestão premium para seus projetos de sites</h2>
           <p>
             Organize clientes, gere links de briefing, acompanhe projetos,
             contratos, acessos e financeiro com mais profissionalismo.
@@ -131,6 +163,64 @@ export default function Home() {
           <h3>Contratos</h3>
           <strong>{carregando ? "..." : contratosAssinados}</strong>
           <p>Assinados</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">💰</div>
+          <h3>Receita Total</h3>
+          <strong>{carregando ? "..." : formatarMoeda(receitaTotal)}</strong>
+          <p>Valor total em contratos</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">⏳</div>
+          <h3>Pendentes</h3>
+          <strong>{carregando ? "..." : contratosPendentes}</strong>
+          <p>Contratos aguardando assinatura</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">📈</div>
+          <h3>Ticket Médio</h3>
+          <strong>{carregando ? "..." : formatarMoeda(ticketMedio)}</strong>
+          <p>Média por contrato</p>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Resumo financeiro</h2>
+          <span>Baseado nos contratos cadastrados</span>
+        </div>
+
+        <div className="table-list">
+          <div className="table-item">
+            <div>
+              <strong>Receita total registrada</strong>
+              <br />
+              <span>Soma de todos os contratos criados</span>
+            </div>
+
+            <span>{carregando ? "..." : formatarMoeda(receitaTotal)}</span>
+
+            <span>{contratos.length} contrato(s)</span>
+
+            <small>Atualizado automaticamente</small>
+          </div>
+
+          <div className="table-item">
+            <div>
+              <strong>Contratos assinados</strong>
+              <br />
+              <span>Clientes que já finalizaram a assinatura</span>
+            </div>
+
+            <span>{contratosAssinados}</span>
+
+            <span>{contratosPendentes} pendente(s)</span>
+
+            <small>Status geral</small>
+          </div>
         </div>
       </section>
 
