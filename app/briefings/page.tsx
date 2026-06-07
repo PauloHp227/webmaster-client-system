@@ -18,6 +18,10 @@ type Briefing = {
   whatsapp: string;
   instagram: string;
 
+  plano_desejado?: string;
+  prazo_desejado?: string;
+  manutencao?: string;
+
   objetivo_selecionado?: string;
   objetivo: string;
   servicos: string;
@@ -95,6 +99,108 @@ export default function BriefingsPage() {
         item.id === id ? { ...item, status: novoStatus } : item
       )
     );
+  }
+
+  function dadosDoPlano(plano?: string) {
+    if (plano === "Site Básico - R$300") {
+      return {
+        servico: "Site Básico institucional",
+        valor: "R$ 300,00",
+        entrada: "R$ 150,00",
+        restante: "R$ 150,00",
+        garantia: "Este plano não inclui 1 mês de garantia.",
+        manutencaoValor: "R$ 50,00/mês",
+      };
+    }
+
+    if (plano === "Catálogo Online - R$400") {
+      return {
+        servico: "Catálogo Online profissional",
+        valor: "R$ 400,00",
+        entrada: "R$ 200,00",
+        restante: "R$ 200,00",
+        garantia: "Este plano inclui 1 mês de garantia após a entrega.",
+        manutencaoValor: "R$ 65,00/mês",
+      };
+    }
+
+    if (plano === "Loja Virtual Completa - R$700") {
+      return {
+        servico: "Loja Virtual Completa com catálogo, carrinho e vendas online",
+        valor: "R$ 700,00",
+        entrada: "R$ 350,00",
+        restante: "R$ 350,00",
+        garantia: "Este plano inclui 1 mês de garantia após a entrega.",
+        manutencaoValor: "R$ 80,00/mês",
+      };
+    }
+
+    return {
+      servico: "Projeto personalizado de site",
+      valor: "A definir",
+      entrada: "A definir",
+      restante: "A definir",
+      garantia: "Garantia definida conforme o plano aprovado.",
+      manutencaoValor: "A definir",
+    };
+  }
+
+  async function gerarContrato(briefing: Briefing) {
+    const plano = dadosDoPlano(briefing.plano_desejado);
+
+    const observacoes = `
+Plano escolhido: ${briefing.plano_desejado || "Não informado"}.
+
+Prazo desejado pelo cliente: ${briefing.prazo_desejado || "Não informado"}.
+
+Interesse em manutenção: ${briefing.manutencao || "Não informado"}.
+
+Garantia: ${plano.garantia}
+
+Manutenção opcional: ${plano.manutencaoValor}.
+
+Objetivo informado: ${briefing.objetivo || "Não informado"}.
+
+Serviços/produtos informados: ${briefing.servicos || "Não informado"}.
+`;
+
+    const { data, error } = await supabase
+      .from("contratos")
+      .insert([
+        {
+          empresa: briefing.empresa,
+          responsavel: "",
+          cpf_cnpj: "",
+          email: "",
+          telefone: "",
+          servico: plano.servico,
+          valor_total: plano.valor,
+          forma_pagamento: "50% na entrada e 50% na entrega",
+          entrada: plano.entrada,
+          restante: plano.restante,
+          prazo:
+            briefing.prazo_desejado ||
+            "Prazo definido após envio das informações necessárias",
+          observacoes,
+          assinatura: null,
+          aceitou_termos: false,
+          status: "Pendente",
+          data_assinatura: null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const link = `${window.location.origin}/contrato/${data.id}`;
+
+    await navigator.clipboard.writeText(link);
+
+    alert(`Contrato criado com sucesso!\n\nLink copiado:\n${link}`);
   }
 
   function salvarComoPDF() {
@@ -257,6 +363,38 @@ export default function BriefingsPage() {
             </div>
 
             <div className="report-section">
+              <h3>Plano e condições</h3>
+
+              <div className="report-grid">
+                <div>
+                  <small>Plano escolhido</small>
+                  <strong>
+                    {briefingSelecionado.plano_desejado || "Não informado"}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>Prazo desejado</small>
+                  <strong>
+                    {briefingSelecionado.prazo_desejado || "Não informado"}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>Interesse em manutenção</small>
+                  <strong>
+                    {briefingSelecionado.manutencao || "Não informado"}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>Status</small>
+                  <strong>{briefingSelecionado.status || "Novo"}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="report-section">
               <h3>Sobre o projeto</h3>
 
               <div className="report-grid">
@@ -278,11 +416,6 @@ export default function BriefingsPage() {
                 <div>
                   <small>Cores desejadas</small>
                   <strong>{briefingSelecionado.cores || "Não informado"}</strong>
-                </div>
-
-                <div>
-                  <small>Status</small>
-                  <strong>{briefingSelecionado.status || "Novo"}</strong>
                 </div>
               </div>
             </div>
@@ -397,6 +530,13 @@ export default function BriefingsPage() {
             </div>
 
             <div className="report-actions no-print">
+              <button
+                className="btn-primary"
+                onClick={() => gerarContrato(briefingSelecionado)}
+              >
+                📄 Gerar Contrato
+              </button>
+
               <button className="btn-primary" onClick={salvarComoPDF}>
                 Salvar relatório em PDF
               </button>
