@@ -200,7 +200,36 @@ Serviços/produtos informados: ${briefing.servicos || "Não informado"}.
 
     await navigator.clipboard.writeText(link);
 
-    alert(`Contrato criado com sucesso!\n\nLink copiado:\n${link}`);
+    const mensagem = `Olá! Tudo bem? 😊
+
+Segue o contrato referente ao projeto da sua empresa.
+
+Por favor, leia com atenção e, estando tudo certo, preencha seus dados e assine digitalmente pelo link abaixo:
+
+${link}
+
+Após a assinatura, seguimos com o pagamento da entrada e o início do desenvolvimento do projeto.
+
+Qualquer dúvida, fico à disposição.
+
+Atenciosamente,
+
+Webmaster Digital
+🌐 Criação de Sites, Lojas Virtuais e Sistemas Web`;
+
+    const telefoneLimpo = briefing.whatsapp?.replace(/\D/g, "") || "";
+
+    if (telefoneLimpo) {
+      const linkWhatsApp = `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(
+        mensagem
+      )}`;
+
+      window.open(linkWhatsApp, "_blank");
+    }
+
+    alert(`Contrato criado com sucesso!
+
+O link foi copiado e o WhatsApp foi aberto automaticamente.`);
   }
 
   function salvarComoPDF() {
