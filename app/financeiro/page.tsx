@@ -12,6 +12,8 @@ type Contrato = {
   restante: string;
   status: string;
   criado_em: string;
+  entrada_paga?: boolean;
+  restante_pago?: boolean;
 };
 
 function converterValor(valor: string) {
@@ -46,6 +48,8 @@ export default function FinanceiroPage() {
   }, []);
 
   async function carregarFinanceiro() {
+    setCarregando(true);
+
     const { data, error } = await supabase
       .from("contratos")
       .select("*")
@@ -53,11 +57,34 @@ export default function FinanceiroPage() {
 
     if (error) {
       alert(error.message);
+      setCarregando(false);
       return;
     }
 
     setContratos(data || []);
     setCarregando(false);
+  }
+
+  async function atualizarPagamento(
+    id: string,
+    campo: "entrada_paga" | "restante_pago",
+    valor: boolean
+  ) {
+    const { error } = await supabase
+      .from("contratos")
+      .update({ [campo]: valor })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setContratos((prev) =>
+      prev.map((contrato) =>
+        contrato.id === id ? { ...contrato, [campo]: valor } : contrato
+      )
+    );
   }
 
   const contratosFiltrados = contratos.filter((contrato) => {
@@ -88,22 +115,37 @@ export default function FinanceiroPage() {
     0
   );
 
+  const valorRecebido = contratos.reduce((total, item) => {
+    let recebido = 0;
+
+    if (item.entrada_paga) {
+      recebido += converterValor(item.entrada);
+    }
+
+    if (item.restante_pago) {
+      recebido += converterValor(item.restante);
+    }
+
+    return total + recebido;
+  }, 0);
+
+  const valorPendente = contratos.reduce((total, item) => {
+    let pendente = 0;
+
+    if (!item.entrada_paga) {
+      pendente += converterValor(item.entrada);
+    }
+
+    if (!item.restante_pago) {
+      pendente += converterValor(item.restante);
+    }
+
+    return total + pendente;
+  }, 0);
+
   const contratosAssinados = contratos.filter(
     (item) => item.status === "Assinado"
   );
-
-  const recebidoEstimado = contratosAssinados.reduce(
-    (total, item) => total + converterValor(item.entrada),
-    0
-  );
-
-  const aReceberEstimado = contratos.reduce((total, item) => {
-    if (item.status === "Assinado") {
-      return total + converterValor(item.restante);
-    }
-
-    return total + converterValor(item.valor_total);
-  }, 0);
 
   const contratosPendentes = contratos.filter(
     (item) => item.status !== "Assinado"
@@ -115,7 +157,7 @@ export default function FinanceiroPage() {
   return (
     <AppShell
       title="Financeiro"
-      subtitle="Acompanhe valores, entradas e pagamentos dos projetos"
+      subtitle="Controle pagamentos recebidos, pendentes e previstos"
     >
       <section className="cards-grid">
         <div className="card">
@@ -127,16 +169,16 @@ export default function FinanceiroPage() {
 
         <div className="card">
           <div className="card-icon">✅</div>
-          <h3>Recebido estimado</h3>
-          <strong>{carregando ? "..." : formatarMoeda(recebidoEstimado)}</strong>
-          <p>Entradas de contratos assinados</p>
+          <h3>Recebido</h3>
+          <strong>{carregando ? "..." : formatarMoeda(valorRecebido)}</strong>
+          <p>Pagamentos marcados como recebidos</p>
         </div>
 
         <div className="card">
           <div className="card-icon">⏳</div>
-          <h3>A receber</h3>
-          <strong>{carregando ? "..." : formatarMoeda(aReceberEstimado)}</strong>
-          <p>Valores pendentes</p>
+          <h3>Pendente</h3>
+          <strong>{carregando ? "..." : formatarMoeda(valorPendente)}</strong>
+          <p>Valor ainda não recebido</p>
         </div>
 
         <div className="card">
@@ -180,7 +222,13 @@ export default function FinanceiroPage() {
       <section className="panel">
         <div className="panel-header">
           <h2>Controle financeiro</h2>
-          <span>{contratosFiltrados.length} contrato(s)</span>
+          <button
+            className="btn-dark"
+            onClick={carregarFinanceiro}
+            disabled={carregando}
+          >
+            {carregando ? "Atualizando..." : "Atualizar"}
+          </button>
         </div>
 
         <div className="filters-row">
@@ -214,16 +262,6 @@ export default function FinanceiroPage() {
               const entrada = converterValor(contrato.entrada);
               const restante = converterValor(contrato.restante);
 
-              const entradaStatus =
-                contrato.status === "Assinado"
-                  ? "Entrada provável recebida"
-                  : "Aguardando assinatura";
-
-              const restanteStatus =
-                contrato.status === "Assinado"
-                  ? "Restante pendente"
-                  : "Contrato ainda pendente";
-
               return (
                 <div className="table-item" key={contrato.id}>
                   <div>
@@ -250,13 +288,41 @@ export default function FinanceiroPage() {
                   <div>
                     <strong>{formatarMoeda(entrada)}</strong>
                     <br />
-                    <span>{entradaStatus}</span>
+
+                    <label className="check-line" style={{ marginTop: "8px" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!contrato.entrada_paga}
+                        onChange={(e) =>
+                          atualizarPagamento(
+                            contrato.id,
+                            "entrada_paga",
+                            e.target.checked
+                          )
+                        }
+                      />
+                      Entrada recebida
+                    </label>
                   </div>
 
                   <div>
                     <strong>{formatarMoeda(restante)}</strong>
                     <br />
-                    <span>{restanteStatus}</span>
+
+                    <label className="check-line" style={{ marginTop: "8px" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!contrato.restante_pago}
+                        onChange={(e) =>
+                          atualizarPagamento(
+                            contrato.id,
+                            "restante_pago",
+                            e.target.checked
+                          )
+                        }
+                      />
+                      Restante recebido
+                    </label>
                   </div>
                 </div>
               );
@@ -288,16 +354,30 @@ export default function FinanceiroPage() {
 
           <div className="table-item">
             <div>
-              <strong>Entradas previstas</strong>
+              <strong>Recebido real</strong>
               <br />
-              <span>Valor inicial dos projetos</span>
+              <span>Somente o que você marcou como pago</span>
             </div>
 
-            <span>{formatarMoeda(entradasPrevistas)}</span>
+            <span>{formatarMoeda(valorRecebido)}</span>
+
+            <span>{formatarMoeda(valorPendente)} pendente</span>
+
+            <small>Controle de recebíveis</small>
+          </div>
+
+          <div className="table-item">
+            <div>
+              <strong>Previsão</strong>
+              <br />
+              <span>Entradas e valores restantes previstos</span>
+            </div>
+
+            <span>{formatarMoeda(entradasPrevistas)} entradas</span>
 
             <span>{formatarMoeda(restantePrevisto)} restante</span>
 
-            <small>Controle de recebíveis</small>
+            <small>Planejamento financeiro</small>
           </div>
         </div>
       </section>
