@@ -25,8 +25,16 @@ type Projeto = {
   progresso?: number;
 };
 
+type TarefaProjeto = {
+  id: number;
+  empresa: string;
+  tarefa: string;
+  concluida: boolean;
+};
+
 export default function ProjetosPage() {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [tarefas, setTarefas] = useState<TarefaProjeto[]>([]);
   const [projetoSelecionado, setProjetoSelecionado] = useState<Projeto | null>(
     null
   );
@@ -37,17 +45,28 @@ export default function ProjetosPage() {
   }, []);
 
   async function carregarProjetos() {
-    const { data, error } = await supabase
+    const { data: projetosData, error: projetosError } = await supabase
       .from("briefings")
       .select("*")
       .order("criado_em", { ascending: false });
 
-    if (error) {
-      alert(error.message);
+    if (projetosError) {
+      alert(projetosError.message);
       return;
     }
 
-    setProjetos(data || []);
+    const { data: tarefasData, error: tarefasError } = await supabase
+      .from("tarefas_projeto")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (tarefasError) {
+      alert(tarefasError.message);
+      return;
+    }
+
+    setProjetos(projetosData || []);
+    setTarefas(tarefasData || []);
   }
 
   function calcularProgresso(status: string) {
@@ -60,6 +79,25 @@ export default function ProjetosPage() {
     if (status === "Aguardando aprovação") return 85;
     if (status === "Finalizado") return 100;
     return 0;
+  }
+
+  function tarefasDoProjeto(empresa?: string) {
+    if (!empresa) return [];
+
+    return tarefas.filter(
+      (item) =>
+        item.empresa?.toLowerCase().trim() === empresa.toLowerCase().trim()
+    );
+  }
+
+  function progressoPorTarefas(empresa?: string) {
+    const lista = tarefasDoProjeto(empresa);
+
+    if (lista.length === 0) return null;
+
+    const concluidas = lista.filter((item) => item.concluida).length;
+
+    return Math.round((concluidas / lista.length) * 100);
   }
 
   async function alterarStatus(id: string, novoStatus: string) {
@@ -80,7 +118,9 @@ export default function ProjetosPage() {
 
     setProjetos((prev) =>
       prev.map((projeto) =>
-        projeto.id === id ? { ...projeto, status: novoStatus, progresso } : projeto
+        projeto.id === id
+          ? { ...projeto, status: novoStatus, progresso }
+          : projeto
       )
     );
 
@@ -94,12 +134,20 @@ export default function ProjetosPage() {
   async function salvarDetalhesProjeto() {
     if (!projetoSelecionado) return;
 
+    const progressoTarefas = progressoPorTarefas(projetoSelecionado.empresa);
+
+    const progressoFinal =
+      progressoTarefas !== null
+        ? progressoTarefas
+        : projetoSelecionado.progresso ||
+          calcularProgresso(projetoSelecionado.status);
+
     const { error } = await supabase
       .from("briefings")
       .update({
         link_site: projetoSelecionado.link_site || "",
         observacoes_projeto: projetoSelecionado.observacoes_projeto || "",
-        progresso: projetoSelecionado.progresso || calcularProgresso(projetoSelecionado.status),
+        progresso: progressoFinal,
       })
       .eq("id", projetoSelecionado.id);
 
@@ -110,11 +158,76 @@ export default function ProjetosPage() {
 
     setProjetos((prev) =>
       prev.map((projeto) =>
-        projeto.id === projetoSelecionado.id ? projetoSelecionado : projeto
+        projeto.id === projetoSelecionado.id
+          ? { ...projetoSelecionado, progresso: progressoFinal }
+          : projeto
       )
     );
 
+    setProjetoSelecionado((prev) =>
+      prev ? { ...prev, progresso: progressoFinal } : prev
+    );
+
     alert("Projeto atualizado com sucesso!");
+  }
+
+  async function criarTarefasPadrao(empresa: string) {
+    if (!empresa) {
+      alert("Empresa não informada.");
+      return;
+    }
+
+    const existentes = tarefasDoProjeto(empresa);
+
+    if (existentes.length > 0) {
+      alert("As tarefas deste projeto já foram criadas.");
+      return;
+    }
+
+    const tarefasPadrao = [
+      "Briefing recebido",
+      "Contrato assinado",
+      "Entrada recebida",
+      "Layout criado",
+      "Desenvolvimento",
+      "Responsivo",
+      "Integração WhatsApp",
+      "Publicação",
+      "Entrega final",
+    ];
+
+    const registros = tarefasPadrao.map((tarefa) => ({
+      empresa,
+      tarefa,
+      concluida: false,
+    }));
+
+    const { error } = await supabase.from("tarefas_projeto").insert(registros);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await carregarProjetos();
+
+    alert("Checklist do projeto criado com sucesso!");
+  }
+
+  async function alterarTarefa(id: number, concluida: boolean) {
+    const { error } = await supabase
+      .from("tarefas_projeto")
+      .update({ concluida })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setTarefas((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, concluida } : item))
+    );
   }
 
   const projetosFiltrados = projetos.filter((projeto) => {
@@ -153,21 +266,32 @@ export default function ProjetosPage() {
         ) : (
           <div className="table-list">
             {projetosFiltrados.map((projeto) => {
+              const progressoTarefas = progressoPorTarefas(projeto.empresa);
+
               const progressoAtual =
-                projeto.progresso ?? calcularProgresso(projeto.status || "Novo");
+                progressoTarefas ??
+                projeto.progresso ??
+                calcularProgresso(projeto.status || "Novo");
 
               return (
                 <div className="table-item" key={projeto.id}>
                   <div>
                     <strong>{projeto.empresa || "Empresa não informada"}</strong>
                     <br />
-                    <span>{projeto.plano_desejado || projeto.segmento || "Plano não informado"}</span>
+                    <span>
+                      {projeto.plano_desejado ||
+                        projeto.segmento ||
+                        "Plano não informado"}
+                    </span>
                     <br />
-                    <small>{projeto.prazo_desejado || "Prazo não informado"}</small>
+                    <small>
+                      {projeto.prazo_desejado || "Prazo não informado"}
+                    </small>
                   </div>
 
                   <div style={{ minWidth: "180px" }}>
                     <small>Progresso: {progressoAtual}%</small>
+
                     <div
                       style={{
                         width: "100%",
@@ -245,7 +369,9 @@ export default function ProjetosPage() {
               <div className="report-grid">
                 <div>
                   <small>Empresa</small>
-                  <strong>{projetoSelecionado.empresa || "Não informado"}</strong>
+                  <strong>
+                    {projetoSelecionado.empresa || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
@@ -264,17 +390,23 @@ export default function ProjetosPage() {
 
                 <div>
                   <small>Manutenção</small>
-                  <strong>{projetoSelecionado.manutencao || "Não informado"}</strong>
+                  <strong>
+                    {projetoSelecionado.manutencao || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
                   <small>WhatsApp</small>
-                  <strong>{projetoSelecionado.whatsapp || "Não informado"}</strong>
+                  <strong>
+                    {projetoSelecionado.whatsapp || "Não informado"}
+                  </strong>
                 </div>
 
                 <div>
                   <small>Instagram</small>
-                  <strong>{projetoSelecionado.instagram || "Não informado"}</strong>
+                  <strong>
+                    {projetoSelecionado.instagram || "Não informado"}
+                  </strong>
                 </div>
               </div>
             </div>
@@ -317,6 +449,57 @@ export default function ProjetosPage() {
                   }}
                 />
               </div>
+            </div>
+
+            <div className="report-section">
+              <h3>Checklist do projeto</h3>
+
+              {tarefasDoProjeto(projetoSelecionado.empresa).length === 0 ? (
+                <div>
+                  <p style={{ marginBottom: "15px", color: "#b8b8b8" }}>
+                    Nenhuma tarefa criada para este projeto.
+                  </p>
+
+                  <button
+                    className="btn-primary"
+                    onClick={() =>
+                      criarTarefasPadrao(projetoSelecionado.empresa)
+                    }
+                  >
+                    Criar checklist padrão
+                  </button>
+                </div>
+              ) : (
+                <div className="table-list">
+                  {tarefasDoProjeto(projetoSelecionado.empresa).map((tarefa) => (
+                    <label
+                      key={tarefa.id}
+                      className="file-selected-box"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div>
+                        <strong>{tarefa.tarefa}</strong>
+                        <span>
+                          {tarefa.concluida ? "Concluída" : "Pendente"}
+                        </span>
+                      </div>
+
+                      <input
+                        type="checkbox"
+                        checked={tarefa.concluida}
+                        onChange={(e) =>
+                          alterarTarefa(tarefa.id, e.target.checked)
+                        }
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="report-section">
