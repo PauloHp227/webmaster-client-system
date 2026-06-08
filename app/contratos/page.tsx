@@ -160,6 +160,25 @@ Serviços/produtos informados: ${briefing.servicos || "Não informado"}.
     alert(`Contrato criado com sucesso!\n\nLink copiado:\n${link}`);
   }
 
+  async function excluirContrato(id: number, empresa: string) {
+    const confirmar = confirm(
+      `Tem certeza que deseja excluir o contrato de ${empresa || "empresa não informada"}?`
+    );
+
+    if (!confirmar) return;
+
+    const { error } = await supabase.from("contratos").delete().eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setContratos((prev) => prev.filter((contrato) => contrato.id !== id));
+
+    alert("Contrato excluído com sucesso.");
+  }
+
   function contratoJaExiste(empresa: string) {
     return contratos.some(
       (contrato) =>
@@ -269,16 +288,27 @@ Serviços/produtos informados: ${briefing.servicos || "Não informado"}.
 
                 <span>{contrato.status || "Pendente"}</span>
 
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    const link = `${window.location.origin}/contrato/${contrato.id}`;
-                    navigator.clipboard.writeText(link);
-                    alert(`Link copiado:\n${link}`);
-                  }}
-                >
-                  Copiar link
-                </button>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      const link = `${window.location.origin}/contrato/${contrato.id}`;
+                      navigator.clipboard.writeText(link);
+                      alert(`Link copiado:\n${link}`);
+                    }}
+                  >
+                    Copiar link
+                  </button>
+
+                  <button
+                    className="btn-danger"
+                    onClick={() =>
+                      excluirContrato(contrato.id, contrato.empresa)
+                    }
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             ))}
           </div>
