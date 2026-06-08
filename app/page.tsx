@@ -23,6 +23,8 @@ type Contrato = {
   restante?: string;
   servico?: string;
   criado_em: string;
+  entrada_paga?: boolean;
+  restante_pago?: boolean;
 };
 
 export default function Home() {
@@ -35,15 +37,29 @@ export default function Home() {
   }, []);
 
   async function carregarDashboard() {
-    const { data: briefingsData } = await supabase
+    setCarregando(true);
+
+    const { data: briefingsData, error: briefingsError } = await supabase
       .from("briefings")
       .select("*")
       .order("criado_em", { ascending: false });
 
-    const { data: contratosData } = await supabase
+    if (briefingsError) {
+      alert(briefingsError.message);
+      setCarregando(false);
+      return;
+    }
+
+    const { data: contratosData, error: contratosError } = await supabase
       .from("contratos")
       .select("*")
       .order("criado_em", { ascending: false });
+
+    if (contratosError) {
+      alert(contratosError.message);
+      setCarregando(false);
+      return;
+    }
 
     setBriefings(briefingsData || []);
     setContratos(contratosData || []);
@@ -127,6 +143,34 @@ export default function Home() {
       return total + converterValor(contrato.valor_total);
     }, 0);
 
+  const valorRecebido = contratos.reduce((total, contrato) => {
+    let recebido = 0;
+
+    if (contrato.entrada_paga) {
+      recebido += converterValor(contrato.entrada);
+    }
+
+    if (contrato.restante_pago) {
+      recebido += converterValor(contrato.restante);
+    }
+
+    return total + recebido;
+  }, 0);
+
+  const valorPendente = contratos.reduce((total, contrato) => {
+    let pendente = 0;
+
+    if (!contrato.entrada_paga) {
+      pendente += converterValor(contrato.entrada);
+    }
+
+    if (!contrato.restante_pago) {
+      pendente += converterValor(contrato.restante);
+    }
+
+    return total + pendente;
+  }, 0);
+
   const entradaPrevista = contratos.reduce((total, contrato) => {
     return total + converterValor(contrato.entrada);
   }, 0);
@@ -138,11 +182,13 @@ export default function Home() {
   const ticketMedio = contratos.length > 0 ? receitaTotal / contratos.length : 0;
 
   const contratosAssinadosMes = contratos.filter(
-    (contrato) => contrato.status === "Assinado" && estaNoMesAtual(contrato.criado_em)
+    (contrato) =>
+      contrato.status === "Assinado" && estaNoMesAtual(contrato.criado_em)
   ).length;
 
   const projetosFinalizadosMes = briefings.filter(
-    (briefing) => briefing.status === "Finalizado" && estaNoMesAtual(briefing.criado_em)
+    (briefing) =>
+      briefing.status === "Finalizado" && estaNoMesAtual(briefing.criado_em)
   ).length;
 
   const planosVendidos = [
@@ -175,7 +221,7 @@ export default function Home() {
   ];
 
   const planoMaisVendido =
-    planosVendidos.sort((a, b) => b.quantidade - a.quantidade)[0];
+    [...planosVendidos].sort((a, b) => b.quantidade - a.quantidade)[0];
 
   const ultimasAtividades = [
     ...briefings.map((item) => ({
@@ -233,8 +279,12 @@ export default function Home() {
           </p>
         </div>
 
-        <button className="btn-primary" onClick={carregarDashboard}>
-          Atualizar dados
+        <button
+          className="btn-primary"
+          onClick={carregarDashboard}
+          disabled={carregando}
+        >
+          {carregando ? "Atualizando..." : "Atualizar dados"}
         </button>
       </section>
 
@@ -247,12 +297,28 @@ export default function Home() {
         </div>
 
         <div className="card">
+          <div className="card-icon">✅</div>
+          <h3>Recebido</h3>
+          <strong>{carregando ? "..." : formatarMoeda(valorRecebido)}</strong>
+          <p>Somente pagamentos marcados como pagos</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">⏳</div>
+          <h3>Pendente</h3>
+          <strong>{carregando ? "..." : formatarMoeda(valorPendente)}</strong>
+          <p>Valor ainda não recebido</p>
+        </div>
+
+        <div className="card">
           <div className="card-icon">📆</div>
           <h3>Receita do mês</h3>
           <strong>{carregando ? "..." : formatarMoeda(receitaMes)}</strong>
           <p>{nomeMesAtual()}</p>
         </div>
+      </section>
 
+      <section className="cards-grid">
         <div className="card">
           <div className="card-icon">📈</div>
           <h3>Ticket médio</h3>
@@ -266,9 +332,7 @@ export default function Home() {
           <strong>{carregando ? "..." : planoMaisVendido.quantidade}</strong>
           <p>{planoMaisVendido.nome}</p>
         </div>
-      </section>
 
-      <section className="cards-grid">
         <div className="card">
           <div className="card-icon">👥</div>
           <h3>Clientes</h3>
@@ -282,7 +346,9 @@ export default function Home() {
           <strong>{carregando ? "..." : projetosEmAndamento}</strong>
           <p>Em desenvolvimento ou aprovação</p>
         </div>
+      </section>
 
+      <section className="cards-grid">
         <div className="card">
           <div className="card-icon">✅</div>
           <h3>Projetos finalizados</h3>
@@ -296,9 +362,7 @@ export default function Home() {
           <strong>{carregando ? "..." : contratosAssinados}</strong>
           <p>{contratosPendentes} pendente(s)</p>
         </div>
-      </section>
 
-      <section className="cards-grid">
         <div className="card">
           <div className="card-icon">📝</div>
           <h3>Briefings</h3>
@@ -312,19 +376,21 @@ export default function Home() {
           <strong>{carregando ? "..." : contratosAssinadosMes}</strong>
           <p>Contratos assinados este mês</p>
         </div>
+      </section>
 
+      <section className="cards-grid">
         <div className="card">
           <div className="card-icon">💵</div>
-          <h3>Entradas previstas</h3>
+          <h3>Entrada prevista</h3>
           <strong>{carregando ? "..." : formatarMoeda(entradaPrevista)}</strong>
-          <p>Soma das entradas</p>
+          <p>Soma das entradas dos contratos</p>
         </div>
 
         <div className="card">
-          <div className="card-icon">⏳</div>
-          <h3>A receber</h3>
+          <div className="card-icon">📌</div>
+          <h3>Saldo previsto</h3>
           <strong>{carregando ? "..." : formatarMoeda(restantePrevisto)}</strong>
-          <p>Soma dos restantes</p>
+          <p>Soma dos valores restantes</p>
         </div>
       </section>
 
@@ -423,8 +489,12 @@ export default function Home() {
       <section className="panel">
         <div className="panel-header">
           <h2>Últimas atividades</h2>
-          <button className="btn-dark" onClick={carregarDashboard}>
-            Atualizar
+          <button
+            className="btn-dark"
+            onClick={carregarDashboard}
+            disabled={carregando}
+          >
+            {carregando ? "Atualizando..." : "Atualizar"}
           </button>
         </div>
 
