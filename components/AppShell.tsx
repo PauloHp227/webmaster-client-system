@@ -18,6 +18,7 @@ const menuItems = [
   { href: "/contratos", label: "Contratos", icon: "📄" },
   { href: "/acessos", label: "Acessos", icon: "🔐" },
   { href: "/financeiro", label: "Financeiro", icon: "💰" },
+  { href: "/agenda", label: "Agenda", icon: "📅" },
 ];
 
 export default function AppShell({
