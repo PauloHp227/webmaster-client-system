@@ -23,6 +23,9 @@ type Projeto = {
   link_site?: string;
   observacoes_projeto?: string;
   progresso?: number;
+
+  data_inicio?: string;
+  data_entrega?: string;
 };
 
 type TarefaProjeto = {
@@ -100,6 +103,59 @@ export default function ProjetosPage() {
     return Math.round((concluidas / lista.length) * 100);
   }
 
+  function calcularDiasRestantes(dataEntrega?: string) {
+    if (!dataEntrega) return null;
+
+    const hoje = new Date();
+    const entrega = new Date(`${dataEntrega}T23:59:59`);
+
+    hoje.setHours(0, 0, 0, 0);
+
+    const diferenca = entrega.getTime() - hoje.getTime();
+
+    return Math.ceil(diferenca / (1000 * 60 * 60 * 24));
+  }
+
+  function statusEntrega(dataEntrega?: string) {
+    const dias = calcularDiasRestantes(dataEntrega);
+
+    if (dias === null) {
+      return {
+        texto: "Sem data definida",
+        detalhe: "Defina uma data de entrega",
+        emoji: "⚪",
+      };
+    }
+
+    if (dias < 0) {
+      return {
+        texto: "Atrasado",
+        detalhe: `${Math.abs(dias)} dia(s) de atraso`,
+        emoji: "🔴",
+      };
+    }
+
+    if (dias <= 3) {
+      return {
+        texto: "Vence em breve",
+        detalhe: `${dias} dia(s) restante(s)`,
+        emoji: "🟡",
+      };
+    }
+
+    return {
+      texto: "Dentro do prazo",
+      detalhe: `${dias} dia(s) restante(s)`,
+      emoji: "🟢",
+    };
+  }
+
+  function formatarData(data?: string) {
+    if (!data) return "Não definida";
+
+    return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
+  }
+
   async function alterarStatus(id: string, novoStatus: string) {
     const progresso = calcularProgresso(novoStatus);
 
@@ -148,6 +204,8 @@ export default function ProjetosPage() {
         link_site: projetoSelecionado.link_site || "",
         observacoes_projeto: projetoSelecionado.observacoes_projeto || "",
         progresso: progressoFinal,
+        data_inicio: projetoSelecionado.data_inicio || null,
+        data_entrega: projetoSelecionado.data_entrega || null,
       })
       .eq("id", projetoSelecionado.id);
 
@@ -230,19 +288,127 @@ export default function ProjetosPage() {
     );
   }
 
-  const projetosFiltrados = projetos.filter((projeto) => {
-    const textoBusca = busca.toLowerCase();
+  const projetosFiltrados = projetos
+    .filter((projeto) => {
+      const textoBusca = busca.toLowerCase();
 
-    return (
-      projeto.empresa?.toLowerCase().includes(textoBusca) ||
-      projeto.segmento?.toLowerCase().includes(textoBusca) ||
-      projeto.whatsapp?.toLowerCase().includes(textoBusca) ||
-      projeto.plano_desejado?.toLowerCase().includes(textoBusca)
-    );
-  });
+      return (
+        projeto.empresa?.toLowerCase().includes(textoBusca) ||
+        projeto.segmento?.toLowerCase().includes(textoBusca) ||
+        projeto.whatsapp?.toLowerCase().includes(textoBusca) ||
+        projeto.plano_desejado?.toLowerCase().includes(textoBusca)
+      );
+    })
+    .sort((a, b) => {
+      const diasA = calcularDiasRestantes(a.data_entrega);
+      const diasB = calcularDiasRestantes(b.data_entrega);
+
+      if (diasA === null && diasB === null) return 0;
+      if (diasA === null) return 1;
+      if (diasB === null) return -1;
+
+      return diasA - diasB;
+    });
+
+  const entregasProximas = projetos
+    .filter((projeto) => projeto.status !== "Finalizado")
+    .filter((projeto) => calcularDiasRestantes(projeto.data_entrega) !== null)
+    .sort((a, b) => {
+      const diasA = calcularDiasRestantes(a.data_entrega) || 0;
+      const diasB = calcularDiasRestantes(b.data_entrega) || 0;
+
+      return diasA - diasB;
+    })
+    .slice(0, 3);
 
   return (
     <AppShell title="Projetos" subtitle="Gerencie os projetos dos clientes">
+      <section className="cards-grid">
+        <div className="card">
+          <div className="card-icon">💻</div>
+          <h3>Total de projetos</h3>
+          <strong>{projetos.length}</strong>
+          <p>Projetos registrados</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">🟢</div>
+          <h3>Dentro do prazo</h3>
+          <strong>
+            {
+              projetos.filter(
+                (projeto) => statusEntrega(projeto.data_entrega).texto === "Dentro do prazo"
+              ).length
+            }
+          </strong>
+          <p>Projetos saudáveis</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">🟡</div>
+          <h3>Vencendo</h3>
+          <strong>
+            {
+              projetos.filter(
+                (projeto) => statusEntrega(projeto.data_entrega).texto === "Vence em breve"
+              ).length
+            }
+          </strong>
+          <p>Entrega próxima</p>
+        </div>
+
+        <div className="card">
+          <div className="card-icon">🔴</div>
+          <h3>Atrasados</h3>
+          <strong>
+            {
+              projetos.filter(
+                (projeto) => statusEntrega(projeto.data_entrega).texto === "Atrasado"
+              ).length
+            }
+          </strong>
+          <p>Precisam de atenção</p>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Entregas próximas</h2>
+          <span>{entregasProximas.length} entrega(s)</span>
+        </div>
+
+        {entregasProximas.length === 0 ? (
+          <div className="empty-state">
+            <h3>Nenhuma entrega próxima</h3>
+            <p>Defina datas de entrega nos projetos para acompanhar prazos.</p>
+          </div>
+        ) : (
+          <div className="table-list">
+            {entregasProximas.map((projeto) => {
+              const entrega = statusEntrega(projeto.data_entrega);
+
+              return (
+                <div className="table-item" key={projeto.id}>
+                  <div>
+                    <strong>{projeto.empresa || "Empresa não informada"}</strong>
+                    <br />
+                    <span>{projeto.plano_desejado || "Plano não informado"}</span>
+                  </div>
+
+                  <span>
+                    {entrega.emoji} {entrega.texto}
+                  </span>
+
+                  <span>{entrega.detalhe}</span>
+
+                  <small>Entrega: {formatarData(projeto.data_entrega)}</small>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
       <section className="panel">
         <div className="panel-header">
           <h2>Projetos em andamento</h2>
@@ -273,6 +439,8 @@ export default function ProjetosPage() {
                 projeto.progresso ??
                 calcularProgresso(projeto.status || "Novo");
 
+              const entrega = statusEntrega(projeto.data_entrega);
+
               return (
                 <div className="table-item" key={projeto.id}>
                   <div>
@@ -285,7 +453,7 @@ export default function ProjetosPage() {
                     </span>
                     <br />
                     <small>
-                      {projeto.prazo_desejado || "Prazo não informado"}
+                      Entrega: {formatarData(projeto.data_entrega)}
                     </small>
                   </div>
 
@@ -312,20 +480,13 @@ export default function ProjetosPage() {
                     </div>
                   </div>
 
-                  <select
-                    className="status-select"
-                    value={projeto.status || "Novo"}
-                    onChange={(e) => alterarStatus(projeto.id, e.target.value)}
-                  >
-                    <option>Novo</option>
-                    <option>Em análise</option>
-                    <option>Contrato enviado</option>
-                    <option>Contrato assinado</option>
-                    <option>Pagamento entrada</option>
-                    <option>Em desenvolvimento</option>
-                    <option>Aguardando aprovação</option>
-                    <option>Finalizado</option>
-                  </select>
+                  <div>
+                    <span>
+                      {entrega.emoji} {entrega.texto}
+                    </span>
+                    <br />
+                    <small>{entrega.detalhe}</small>
+                  </div>
 
                   <button
                     className="btn-primary"
@@ -406,6 +567,63 @@ export default function ProjetosPage() {
                   <small>Instagram</small>
                   <strong>
                     {projetoSelecionado.instagram || "Não informado"}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="report-section">
+              <h3>Prazo e entrega</h3>
+
+              <div className="report-grid">
+                <div>
+                  <small>Data de início</small>
+                  <input
+                    type="date"
+                    value={projetoSelecionado.data_inicio || ""}
+                    onChange={(e) =>
+                      setProjetoSelecionado((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              data_inicio: e.target.value,
+                            }
+                          : prev
+                      )
+                    }
+                  />
+                </div>
+
+                <div>
+                  <small>Data prevista de entrega</small>
+                  <input
+                    type="date"
+                    value={projetoSelecionado.data_entrega || ""}
+                    onChange={(e) =>
+                      setProjetoSelecionado((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              data_entrega: e.target.value,
+                            }
+                          : prev
+                      )
+                    }
+                  />
+                </div>
+
+                <div>
+                  <small>Status da entrega</small>
+                  <strong>
+                    {statusEntrega(projetoSelecionado.data_entrega).emoji}{" "}
+                    {statusEntrega(projetoSelecionado.data_entrega).texto}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>Dias restantes</small>
+                  <strong>
+                    {statusEntrega(projetoSelecionado.data_entrega).detalhe}
                   </strong>
                 </div>
               </div>
