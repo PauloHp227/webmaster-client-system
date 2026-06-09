@@ -15,10 +15,16 @@ type Projeto = {
   data_entrega?: string;
 };
 
+type DiaCalendario = {
+  dia: number | null;
+  dataCompleta: Date | null;
+};
+
 export default function AgendaPage() {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(true);
+  const [dataBase, setDataBase] = useState(new Date());
 
   useEffect(() => {
     carregarAgenda();
@@ -95,6 +101,83 @@ export default function AgendaPage() {
     };
   }
 
+  function mesmoDia(dataA: Date, dataB: Date) {
+    return (
+      dataA.getDate() === dataB.getDate() &&
+      dataA.getMonth() === dataB.getMonth() &&
+      dataA.getFullYear() === dataB.getFullYear()
+    );
+  }
+
+  function montarCalendario() {
+    const ano = dataBase.getFullYear();
+    const mes = dataBase.getMonth();
+
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+
+    const totalDias = ultimoDia.getDate();
+    const diaSemanaInicio = primeiroDia.getDay();
+
+    const dias: DiaCalendario[] = [];
+
+    for (let i = 0; i < diaSemanaInicio; i++) {
+      dias.push({
+        dia: null,
+        dataCompleta: null,
+      });
+    }
+
+    for (let dia = 1; dia <= totalDias; dia++) {
+      dias.push({
+        dia,
+        dataCompleta: new Date(ano, mes, dia),
+      });
+    }
+
+    while (dias.length % 7 !== 0) {
+      dias.push({
+        dia: null,
+        dataCompleta: null,
+      });
+    }
+
+    return dias;
+  }
+
+  function mudarMes(valor: number) {
+    setDataBase((prev) => {
+      return new Date(prev.getFullYear(), prev.getMonth() + valor, 1);
+    });
+  }
+
+  function voltarMesAtual() {
+    setDataBase(new Date());
+  }
+
+  function projetosNoDia(dataCompleta: Date | null) {
+    if (!dataCompleta) return [];
+
+    return projetos.filter((projeto) => {
+      if (!projeto.data_entrega) return false;
+
+      const data = new Date(`${projeto.data_entrega}T00:00:00`);
+
+      return mesmoDia(data, dataCompleta);
+    });
+  }
+
+  const hoje = new Date();
+
+  const mesAtual = dataBase.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  const diasCalendario = montarCalendario();
+
   const projetosComEntrega = projetos.filter((projeto) => projeto.data_entrega);
 
   const atrasados = projetosComEntrega.filter(
@@ -139,27 +222,16 @@ export default function AgendaPage() {
       return diasA - diasB;
     });
 
-  const diasDoMes = Array.from({ length: 31 }, (_, index) => index + 1);
+  const entregasDoMes = projetosComEntrega.filter((projeto) => {
+    if (!projeto.data_entrega) return false;
 
-  const hoje = new Date();
-  const mesAtual = hoje.toLocaleDateString("pt-BR", {
-    month: "long",
-    year: "numeric",
+    const data = new Date(`${projeto.data_entrega}T00:00:00`);
+
+    return (
+      data.getMonth() === dataBase.getMonth() &&
+      data.getFullYear() === dataBase.getFullYear()
+    );
   });
-
-  function projetosNoDia(dia: number) {
-    return projetos.filter((projeto) => {
-      if (!projeto.data_entrega) return false;
-
-      const data = new Date(`${projeto.data_entrega}T00:00:00`);
-
-      return (
-        data.getDate() === dia &&
-        data.getMonth() === hoje.getMonth() &&
-        data.getFullYear() === hoje.getFullYear()
-      );
-    });
-  }
 
   return (
     <AppShell
@@ -169,9 +241,9 @@ export default function AgendaPage() {
       <section className="cards-grid">
         <div className="card">
           <div className="card-icon">📅</div>
-          <h3>Com entrega</h3>
-          <strong>{carregando ? "..." : projetosComEntrega.length}</strong>
-          <p>Projetos com data definida</p>
+          <h3>Entregas no mês</h3>
+          <strong>{carregando ? "..." : entregasDoMes.length}</strong>
+          <p>{mesAtual}</p>
         </div>
 
         <div className="card">
@@ -199,53 +271,159 @@ export default function AgendaPage() {
       <section className="panel">
         <div className="panel-header">
           <h2>Calendário de entregas</h2>
-          <span>{mesAtual}</span>
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button className="btn-dark" onClick={() => mudarMes(-1)}>
+              ← Mês anterior
+            </button>
+
+            <button className="btn-primary" onClick={voltarMesAtual}>
+              Hoje
+            </button>
+
+            <button className="btn-dark" onClick={() => mudarMes(1)}>
+              Próximo mês →
+            </button>
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginBottom: "18px",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <span className="page-label">Mês selecionado</span>
+            <h2 style={{ marginTop: "6px", textTransform: "capitalize" }}>
+              {mesAtual}
+            </h2>
+          </div>
+
+          <div style={{ color: "#b8b8b8", fontSize: "14px" }}>
+            Hoje: {hoje.toLocaleDateString("pt-BR")}
+          </div>
         </div>
 
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            gap: "12px",
+            gap: "10px",
+            marginBottom: "10px",
           }}
         >
-          {diasDoMes.map((dia) => {
-            const itens = projetosNoDia(dia);
+          {diasSemana.map((dia) => (
+            <div
+              key={dia}
+              style={{
+                padding: "10px",
+                textAlign: "center",
+                color: "#d6b56d",
+                fontWeight: "bold",
+                borderRadius: "12px",
+                background: "rgba(214,181,109,0.08)",
+                border: "1px solid rgba(214,181,109,0.18)",
+              }}
+            >
+              {dia}
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 1fr)",
+            gap: "10px",
+          }}
+        >
+          {diasCalendario.map((item, index) => {
+            const itens = projetosNoDia(item.dataCompleta);
+            const hojeAtivo =
+              item.dataCompleta !== null && mesmoDia(item.dataCompleta, hoje);
 
             return (
               <div
-                key={dia}
+                key={index}
                 style={{
-                  minHeight: "120px",
-                  padding: "14px",
+                  minHeight: "135px",
+                  padding: "13px",
                   borderRadius: "18px",
-                  background: "rgba(255,255,255,0.055)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: hojeAtivo
+                    ? "linear-gradient(135deg, rgba(214,181,109,0.22), rgba(179,0,0,0.18))"
+                    : item.dia
+                    ? "rgba(255,255,255,0.055)"
+                    : "rgba(255,255,255,0.025)",
+                  border: hojeAtivo
+                    ? "1px solid rgba(214,181,109,0.65)"
+                    : "1px solid rgba(255,255,255,0.12)",
+                  boxShadow: hojeAtivo
+                    ? "0 18px 40px rgba(214,181,109,0.12)"
+                    : "none",
+                  opacity: item.dia ? 1 : 0.45,
                 }}
               >
-                <strong>{dia}</strong>
+                {item.dia ? (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <strong>{item.dia}</strong>
 
-                <div style={{ marginTop: "10px", display: "grid", gap: "8px" }}>
-                  {itens.map((projeto) => {
-                    const entrega = statusEntrega(projeto.data_entrega);
-
-                    return (
-                      <div
-                        key={projeto.id}
-                        style={{
-                          fontSize: "12px",
-                          padding: "8px",
-                          borderRadius: "12px",
-                          background: "rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        <span>
-                          {entrega.emoji} {projeto.empresa}
+                      {hojeAtivo && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: "#d6b56d",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          Hoje
                         </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: "10px",
+                        display: "grid",
+                        gap: "8px",
+                      }}
+                    >
+                      {itens.map((projeto) => {
+                        const entrega = statusEntrega(projeto.data_entrega);
+
+                        return (
+                          <div
+                            key={projeto.id}
+                            style={{
+                              fontSize: "12px",
+                              padding: "8px",
+                              borderRadius: "12px",
+                              background: "rgba(255,255,255,0.08)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                            }}
+                          >
+                            <span>
+                              {entrega.emoji} {projeto.empresa}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <span style={{ color: "#555" }}>—</span>
+                )}
               </div>
             );
           })}
