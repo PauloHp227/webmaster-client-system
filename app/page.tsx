@@ -12,6 +12,8 @@ type Briefing = {
   criado_em: string;
   plano_desejado?: string;
   progresso?: number;
+  data_inicio?: string;
+  data_entrega?: string;
 };
 
 type Contrato = {
@@ -122,6 +124,59 @@ export default function Home() {
     );
   }
 
+  function calcularDiasRestantes(dataEntrega?: string) {
+    if (!dataEntrega) return null;
+
+    const hoje = new Date();
+    const entrega = new Date(`${dataEntrega}T23:59:59`);
+
+    hoje.setHours(0, 0, 0, 0);
+
+    const diferenca = entrega.getTime() - hoje.getTime();
+
+    return Math.ceil(diferenca / (1000 * 60 * 60 * 24));
+  }
+
+  function formatarData(data?: string) {
+    if (!data) return "Não definida";
+
+    return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
+  }
+
+  function statusEntrega(dataEntrega?: string) {
+    const dias = calcularDiasRestantes(dataEntrega);
+
+    if (dias === null) {
+      return {
+        texto: "Sem prazo definido",
+        detalhe: "Sem data",
+        emoji: "⚪",
+      };
+    }
+
+    if (dias < 0) {
+      return {
+        texto: "Atrasado",
+        detalhe: `${Math.abs(dias)} dia(s) de atraso`,
+        emoji: "🔴",
+      };
+    }
+
+    if (dias <= 3) {
+      return {
+        texto: "Vence em breve",
+        detalhe: `${dias} dia(s) restante(s)`,
+        emoji: "🟡",
+      };
+    }
+
+    return {
+      texto: "Dentro do prazo",
+      detalhe: `${dias} dia(s) restante(s)`,
+      emoji: "🟢",
+    };
+  }
+
   const totalBriefings = briefings.length;
 
   const projetosEmAndamento = briefings.filter(
@@ -195,7 +250,8 @@ export default function Home() {
     return total + converterValor(contrato.restante);
   }, 0);
 
-  const ticketMedio = contratos.length > 0 ? receitaTotal / contratos.length : 0;
+  const ticketMedio =
+    contratos.length > 0 ? receitaTotal / contratos.length : 0;
 
   const contratosAssinadosMes = contratos.filter(
     (contrato) =>
@@ -238,6 +294,17 @@ export default function Home() {
 
   const planoMaisVendido =
     [...planosVendidos].sort((a, b) => b.quantidade - a.quantidade)[0];
+
+  const entregasProximas = briefings
+    .filter((projeto) => projeto.status !== "Finalizado")
+    .filter((projeto) => projeto.data_entrega)
+    .sort((a, b) => {
+      const diasA = calcularDiasRestantes(a.data_entrega) || 0;
+      const diasB = calcularDiasRestantes(b.data_entrega) || 0;
+
+      return diasA - diasB;
+    })
+    .slice(0, 5);
 
   const notificacoes: Notificacao[] = [];
 
@@ -302,6 +369,27 @@ export default function Home() {
         tipo: "atraso",
         mensagem: `🔴 ${projeto.empresa} está há mais de 15 dias em andamento`,
       });
+    });
+
+  briefings
+    .filter((projeto) => projeto.status !== "Finalizado")
+    .filter((projeto) => projeto.data_entrega)
+    .forEach((projeto) => {
+      const entrega = statusEntrega(projeto.data_entrega);
+
+      if (entrega.texto === "Atrasado") {
+        notificacoes.push({
+          tipo: "entrega",
+          mensagem: `🔴 ${projeto.empresa} está com entrega atrasada: ${entrega.detalhe}`,
+        });
+      }
+
+      if (entrega.texto === "Vence em breve") {
+        notificacoes.push({
+          tipo: "entrega",
+          mensagem: `🟡 ${projeto.empresa} vence em breve: ${entrega.detalhe}`,
+        });
+      }
     });
 
   const ultimasAtividades = [
@@ -499,6 +587,44 @@ export default function Home() {
                 <small>CRM Monitor</small>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>📅 Entregas Próximas</h2>
+          <span>{entregasProximas.length} projeto(s)</span>
+        </div>
+
+        {entregasProximas.length === 0 ? (
+          <div className="empty-state">
+            <h3>Nenhuma entrega cadastrada</h3>
+            <p>Defina datas de entrega nos projetos.</p>
+          </div>
+        ) : (
+          <div className="table-list">
+            {entregasProximas.map((projeto) => {
+              const entrega = statusEntrega(projeto.data_entrega);
+
+              return (
+                <div className="table-item" key={projeto.id}>
+                  <div>
+                    <strong>{projeto.empresa}</strong>
+                    <br />
+                    <span>
+                      {entrega.emoji} {entrega.texto}
+                    </span>
+                  </div>
+
+                  <span>{entrega.detalhe}</span>
+
+                  <small>Entrega: {formatarData(projeto.data_entrega)}</small>
+
+                  <small>{projeto.status || "Sem status"}</small>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
