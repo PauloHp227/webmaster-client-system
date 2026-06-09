@@ -156,6 +156,17 @@ export default function ProjetosPage() {
     return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
   }
 
+  function abrirWhatsApp(whatsapp?: string) {
+    const telefone = whatsapp?.replace(/\D/g, "");
+
+    if (!telefone) {
+      alert("WhatsApp não informado.");
+      return;
+    }
+
+    window.open(`https://wa.me/55${telefone}`, "_blank");
+  }
+
   async function alterarStatus(id: string, novoStatus: string) {
     const progresso = calcularProgresso(novoStatus);
 
@@ -288,6 +299,55 @@ export default function ProjetosPage() {
     );
   }
 
+  const alertasProjetos = projetos
+    .filter((projeto) => projeto.status !== "Finalizado")
+    .map((projeto) => {
+      const entrega = statusEntrega(projeto.data_entrega);
+      const progresso =
+        progressoPorTarefas(projeto.empresa) ??
+        projeto.progresso ??
+        calcularProgresso(projeto.status || "Novo");
+
+      if (entrega.texto === "Atrasado") {
+        return {
+          empresa: projeto.empresa,
+          mensagem: `🔴 ${projeto.empresa} está atrasado: ${entrega.detalhe}`,
+          detalhe: "Prioridade alta",
+        };
+      }
+
+      if (entrega.texto === "Vence em breve") {
+        return {
+          empresa: projeto.empresa,
+          mensagem: `🟡 ${projeto.empresa} vence em breve: ${entrega.detalhe}`,
+          detalhe: "Acompanhar entrega",
+        };
+      }
+
+      if (progresso >= 80 && projeto.status !== "Finalizado") {
+        return {
+          empresa: projeto.empresa,
+          mensagem: `🚀 ${projeto.empresa} está com ${progresso}% concluído`,
+          detalhe: "Perto da entrega final",
+        };
+      }
+
+      if (tarefasDoProjeto(projeto.empresa).length === 0) {
+        return {
+          empresa: projeto.empresa,
+          mensagem: `📋 ${projeto.empresa} ainda não possui checklist criado`,
+          detalhe: "Criar tarefas do projeto",
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean) as {
+    empresa: string;
+    mensagem: string;
+    detalhe: string;
+  }[];
+
   const projetosFiltrados = projetos
     .filter((projeto) => {
       const textoBusca = busca.toLowerCase();
@@ -337,7 +397,9 @@ export default function ProjetosPage() {
           <strong>
             {
               projetos.filter(
-                (projeto) => statusEntrega(projeto.data_entrega).texto === "Dentro do prazo"
+                (projeto) =>
+                  statusEntrega(projeto.data_entrega).texto ===
+                  "Dentro do prazo"
               ).length
             }
           </strong>
@@ -350,7 +412,9 @@ export default function ProjetosPage() {
           <strong>
             {
               projetos.filter(
-                (projeto) => statusEntrega(projeto.data_entrega).texto === "Vence em breve"
+                (projeto) =>
+                  statusEntrega(projeto.data_entrega).texto ===
+                  "Vence em breve"
               ).length
             }
           </strong>
@@ -363,12 +427,41 @@ export default function ProjetosPage() {
           <strong>
             {
               projetos.filter(
-                (projeto) => statusEntrega(projeto.data_entrega).texto === "Atrasado"
+                (projeto) =>
+                  statusEntrega(projeto.data_entrega).texto === "Atrasado"
               ).length
             }
           </strong>
           <p>Precisam de atenção</p>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Alertas do Projeto</h2>
+          <span>{alertasProjetos.length} alerta(s)</span>
+        </div>
+
+        {alertasProjetos.length === 0 ? (
+          <div className="empty-state">
+            <h3>Tudo em ordem</h3>
+            <p>Nenhum alerta crítico encontrado nos projetos.</p>
+          </div>
+        ) : (
+          <div className="table-list">
+            {alertasProjetos.map((alerta, index) => (
+              <div className="table-item" key={index}>
+                <div>
+                  <strong>{alerta.mensagem}</strong>
+                  <br />
+                  <span>{alerta.detalhe}</span>
+                </div>
+
+                <small>CRM Monitor</small>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">
@@ -785,6 +878,13 @@ export default function ProjetosPage() {
             </div>
 
             <div className="report-actions">
+              <button
+                className="btn-primary"
+                onClick={() => abrirWhatsApp(projetoSelecionado.whatsapp)}
+              >
+                Abrir WhatsApp
+              </button>
+
               <button className="btn-primary" onClick={salvarDetalhesProjeto}>
                 Salvar alterações
               </button>
