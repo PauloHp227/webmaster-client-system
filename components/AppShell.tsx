@@ -8,18 +8,19 @@ type AppShellProps = {
   title: string;
   subtitle?: string;
 };
-
 const menuItems = [
   { href: "/", label: "Dashboard", icon: "📊" },
+  { href: "/prospects", label: "Prospects", icon: "👀" },
   { href: "/comercial", label: "Comercial", icon: "📈" },
   { href: "/clientes", label: "Clientes", icon: "👥" },
   { href: "/projetos", label: "Projetos", icon: "💻" },
   { href: "/briefings", label: "Briefings", icon: "📝" },
   { href: "/contratos", label: "Contratos", icon: "📄" },
-  { href: "/acessos", label: "Acessos", icon: "🔐" },
   { href: "/financeiro", label: "Financeiro", icon: "💰" },
   { href: "/agenda", label: "Agenda", icon: "📅" },
+  { href: "/acessos", label: "Acessos", icon: "🔐" },
 ];
+
 
 export default function AppShell({
   children,
