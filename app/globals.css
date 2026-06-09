@@ -70,12 +70,17 @@ button:hover {
   background: rgba(0, 0, 0, 0.58);
   border-right: 1px solid var(--border-gold);
   backdrop-filter: blur(22px);
+
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+
   position: sticky;
   top: 0;
   height: 100vh;
+
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .logo-area {
@@ -96,6 +101,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 11px;
+  padding-bottom: 30px;
 }
 
 .menu-link {
@@ -223,6 +229,12 @@ button:hover {
   background: rgba(214, 181, 109, 0.12);
   border-radius: 50%;
   filter: blur(6px);
+  pointer-events: none;
+}
+
+.hero-panel > * {
+  position: relative;
+  z-index: 2;
 }
 
 .hero-panel span {
@@ -978,4 +990,24 @@ button:hover {
   .admin-box {
     width: 100%;
   }
+}
+
+/* SIDEBAR SCROLL FIX */
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(214, 181, 109, 0.35);
+  border-radius: 999px;
+}
+
+.sidebar-footer {
+  margin-top: 20px;
+  flex-shrink: 0;
 }
