@@ -27,6 +27,11 @@ type Contrato = {
   restante_pago?: boolean;
 };
 
+type Notificacao = {
+  tipo: string;
+  mensagem: string;
+};
+
 export default function Home() {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
@@ -104,6 +109,17 @@ export default function Home() {
       month: "long",
       year: "numeric",
     });
+  }
+
+  function diasDesdeCriacao(data?: string) {
+    if (!data) return 0;
+
+    const hoje = new Date();
+    const criado = new Date(data);
+
+    return Math.floor(
+      (hoje.getTime() - criado.getTime()) / (1000 * 60 * 60 * 24)
+    );
   }
 
   const totalBriefings = briefings.length;
@@ -222,6 +238,71 @@ export default function Home() {
 
   const planoMaisVendido =
     [...planosVendidos].sort((a, b) => b.quantidade - a.quantidade)[0];
+
+  const notificacoes: Notificacao[] = [];
+
+  contratos
+    .filter((contrato) => contrato.status !== "Assinado")
+    .forEach((contrato) => {
+      notificacoes.push({
+        tipo: "contrato",
+        mensagem: `📄 ${contrato.empresa} ainda não assinou o contrato`,
+      });
+    });
+
+  contratos
+    .filter((contrato) => contrato.status === "Assinado" && !contrato.entrada_paga)
+    .forEach((contrato) => {
+      notificacoes.push({
+        tipo: "pagamento",
+        mensagem: `💰 ${contrato.empresa} assinou, mas a entrada ainda não foi marcada como recebida`,
+      });
+    });
+
+  contratos
+    .filter(
+      (contrato) =>
+        contrato.status === "Assinado" &&
+        contrato.entrada_paga &&
+        !contrato.restante_pago
+    )
+    .forEach((contrato) => {
+      notificacoes.push({
+        tipo: "pagamento",
+        mensagem: `⏳ ${contrato.empresa} ainda possui pagamento restante pendente`,
+      });
+    });
+
+  briefings
+    .filter((projeto) => projeto.status === "Aguardando aprovação")
+    .forEach((projeto) => {
+      notificacoes.push({
+        tipo: "aprovacao",
+        mensagem: `🟡 ${projeto.empresa} está aguardando aprovação`,
+      });
+    });
+
+  briefings
+    .filter((projeto) => (projeto.progresso || 0) >= 80)
+    .forEach((projeto) => {
+      notificacoes.push({
+        tipo: "finalizacao",
+        mensagem: `🚀 ${projeto.empresa} está com ${projeto.progresso}% concluído`,
+      });
+    });
+
+  briefings
+    .filter(
+      (projeto) =>
+        projeto.status !== "Finalizado" &&
+        diasDesdeCriacao(projeto.criado_em) > 15
+    )
+    .forEach((projeto) => {
+      notificacoes.push({
+        tipo: "atraso",
+        mensagem: `🔴 ${projeto.empresa} está há mais de 15 dias em andamento`,
+      });
+    });
 
   const ultimasAtividades = [
     ...briefings.map((item) => ({
@@ -392,6 +473,34 @@ export default function Home() {
           <strong>{carregando ? "..." : formatarMoeda(restantePrevisto)}</strong>
           <p>Soma dos valores restantes</p>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Central de Notificações</h2>
+          <span>{notificacoes.length} alerta(s)</span>
+        </div>
+
+        {notificacoes.length === 0 ? (
+          <div className="empty-state">
+            <h3>Tudo em ordem</h3>
+            <p>Nenhuma notificação encontrada.</p>
+          </div>
+        ) : (
+          <div className="table-list">
+            {notificacoes.map((item, index) => (
+              <div className="table-item" key={index}>
+                <div>
+                  <strong>{item.mensagem}</strong>
+                  <br />
+                  <span>Tipo: {item.tipo}</span>
+                </div>
+
+                <small>CRM Monitor</small>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel">
